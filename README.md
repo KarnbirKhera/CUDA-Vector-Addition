@@ -23,8 +23,8 @@ This project implements five progressively "optimized" CUDA kernels for vector a
 <h3>Hardware</h3>
 On current GPU (RTX 4060):
 - 24 SMs
-- 6 max residental blocks per SM
-- 1,536 max residental thread per SM --> overflow will cause waves, (needing to queue blocks, which is not necessarily a bad thing, but queueing blocks has overhead)
-- 65,536 max registers per SM --> overflow causes register spilling into L1 cache (slower)
-- 36,864 max threads for GPU
-- 1,572,864 max registers for GPU
+- 6 max residental blocks per SM \n
+- 1,536 max residental thread per SM --> overflow will cause waves, (needing to queue blocks, which is not necessarily a bad thing, but queueing blocks has overhead) \n
+- 65,536 max registers per SM --> overflow causes register spilling into L1 cache (slower) \n
+- 36,864 max threads for GPU \n
+- 1,572,864 max registers for GPU\n
