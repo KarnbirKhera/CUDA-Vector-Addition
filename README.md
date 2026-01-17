@@ -20,8 +20,7 @@ This project implements five progressively "optimized" CUDA kernels for vector a
 
 
 <h2>Benchmark Results</h2>
-
-<h1>Hardware</h1>
+<h3>Hardware</h3>
 On current GPU (RTX 4060):
 - 24 SMs
 - 6 max residental blocks per SM
