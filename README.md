@@ -11,20 +11,40 @@ This project implements five progressively "optimized" CUDA kernels for vector a
 
 | Vector Sum Kernel                  | Techniques                             | Register Count
 |------------------------------------|----------------------------------------|-------------------------
-| 'vectorSum'                        | Naive (1 thread : 1 element)           |
-| 'gridStrideVectorSum'              | Grid Stride                            |
-| 'vectorizedVectorSum'              | Vectorization (float4)                 |
-| 'gridVectorizedVectorSum'          | Grid Stride + Vectorization            |
-| 'ILPVectorizedGridVectorSum'       | Grid Stride + Vectorization + ILP=2    |
-|                                    |                                        |
+| 'vectorSum'                        | Naive (1 thread : 1 element)           |  16
+| 'gridStrideVectorSum'              | Grid Stride                            |  26
+| 'vectorizedVectorSum'              | Vectorization (float4)                 |  22
+| 'gridVectorizedVectorSum'          | Grid Stride + Vectorization            |  34
+| 'ILPVectorizedGridVectorSum'       | Grid Stride + Vectorization + ILP=2    |  40
 
 
 <h2>Benchmark Results</h2>
+<h3>Throughput (GB/s)</h3>
+
+| Technique                 | 10M Elements           | 100M Elements          | 200M Elements          |
+|---------------------------|------------------------|------------------------|------------------------|
+| Naive                     |    <ins>233.2</ins>    |    <ins>232.6</ins>    |  <ins>235.8</ins>      | 
+| Grid Stride               |      233.2             |      195.4             |      230.5             |
+| Vectorized                |      235.6             |      199.3             |      235.6             |
+| Grid Stride + Vectorized  |      218.5             |      196.2             |      233.3             |
+| Grid Stride + Vec + ILP=2 |      233.4             |      149.9             |      233.2             |
+
+<h3>Efficiency (% of peak bandwidth)</h3>
+
+| Technique                 | 10M Elements    | 100M Elements   | 200M Elements   |
+|---------------------------|-----------------|-----------------|-----------------|
+| Naive                     |<ins>87.5%</ins> |<ins>85.5%</ins> | <ins>86.7%</ins>| 
+| Grid Stride               |      85.1%      |      71.8%      |      84.7%      |
+| Vectorized                |      86.6%      |      73.3%      |      86.6%      |
+| Grid Stride + Vectorized  |      80.2%      |      72.1%      |      85.8%      |
+| Grid Stride + Vec + ILP=2 |      85.6%      |      71.6%      |      85.7%      |
+
+
 <h3>Hardware</h3>
-On current GPU (RTX 4060):
-- 24 SMs
-- 6 max residental blocks per SM \n
-- 1,536 max residental thread per SM --> overflow will cause waves, (needing to queue blocks, which is not necessarily a bad thing, but queueing blocks has overhead) \n
-- 65,536 max registers per SM --> overflow causes register spilling into L1 cache (slower) \n
-- 36,864 max threads for GPU \n
-- 1,572,864 max registers for GPU\n
+On current GPU (RTX 4060):<br>
+- 24 SMs<br>
+- 6 max residental blocks per SM<br>
+- 1,536 max residental thread per SM<br>
+- 65,536 max registers per SM <br>
+- 36,864 max threads for GPU <br>
+- 1,572,864 max registers for GPU<br>
