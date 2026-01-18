@@ -16,12 +16,12 @@ This project implements five progressively "optimized" CUDA kernels for vector a
 | 'vectorizedVectorSum'              | Vectorization (float4)                 |  22
 | 'gridVectorizedVectorSum'          | Grid Stride + Vectorization            |  32
 | 'ILP2VectorizedGridVectorSum'      | Grid Stride + Vectorization + ILP=2    |  38
-| 'ILP4VectorizedGridVectorSum'      | Grid Stride + Vectorization + ILP=2    |  40
+| 'ILP4VectorizedGridVectorSum'      | Grid Stride + Vectorization + ILP=4    |  40
 
 
 <h2>Benchmark Results</h2>
 
-<h3>Time Elapsed (measured by CUDA Events)</h3>
+<h3>Time Elapsed (measured using CUDA Events)</h3>
 
 | Technique                 | 10M Elements           | 100M Elements          | 200M Elements          |
 |---------------------------|------------------------|------------------------|------------------------|
@@ -30,7 +30,7 @@ This project implements five progressively "optimized" CUDA kernels for vector a
 | Vectorized                | 0.5062 ms (+/- 0.0218) | 5.1051 ms (+/- 0.0455) | 10.1796 ms (+/- 0.0416)|
 | Grid Stride + Vectorized  | 0.5148 ms (+/- 0.0303) | 5.1525 ms (+/- 0.0355) | 10.3025 ms (+/- 0.0733)|
 | Grid Stride + Vec + ILP=2 | 0.5144 ms (+/- 0.0257) | 5.1321 ms (+/- 0.0352) | 10.2989 ms (+/- 0.0526)|
-| Grid Stride + Vec + ILP=2 | 0.5181 ms (+/- 0.0260) | 5.1429 ms (+/- 0.0300) | 10.3335 ms (+/- 0.0941)|
+| Grid Stride + Vec + ILP=4 | 0.5181 ms (+/- 0.0260) | 5.1429 ms (+/- 0.0300) | 10.3335 ms (+/- 0.0941)|
 
 <h3>Throughput (GB/s)</h3>
 
