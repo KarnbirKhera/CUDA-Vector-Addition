@@ -14,11 +14,24 @@ This project implements five progressively "optimized" CUDA kernels for vector a
 | 'vectorSum'                        | Naive (1 thread : 1 element)           |  16
 | 'gridStrideVectorSum'              | Grid Stride                            |  26
 | 'vectorizedVectorSum'              | Vectorization (float4)                 |  22
-| 'gridVectorizedVectorSum'          | Grid Stride + Vectorization            |  34
-| 'ILPVectorizedGridVectorSum'       | Grid Stride + Vectorization + ILP=2    |  40
+| 'gridVectorizedVectorSum'          | Grid Stride + Vectorization            |  32
+| 'ILP2VectorizedGridVectorSum'      | Grid Stride + Vectorization + ILP=2    |  38
+| 'ILP4VectorizedGridVectorSum'      | Grid Stride + Vectorization + ILP=2    |  40
 
 
 <h2>Benchmark Results</h2>
+
+<h3>Time Elapsed (measured by CUDA Events)</h3>
+
+| Technique                 | 10M Elements           | 100M Elements          | 200M Elements          |
+|---------------------------|------------------------|------------------------|------------------------|
+| Naive                     | 0.5064 ms (+/- 0.0232) | 5.0811 ms (+/- 0.0344) | 10.1844 ms (+/- 0.0495)| 
+| Grid Stride               | 0.5169 ms (+/- 0.0272) | 5.1938 ms (+/- 0.0249) | 10.4098 ms (+/- 0.0542)|
+| Vectorized                | 0.5062 ms (+/- 0.0218) | 5.1051 ms (+/- 0.0455) | 10.1796 ms (+/- 0.0416)|
+| Grid Stride + Vectorized  | 0.5148 ms (+/- 0.0303) | 5.1525 ms (+/- 0.0355) | 10.3025 ms (+/- 0.0733)|
+| Grid Stride + Vec + ILP=2 | 0.5144 ms (+/- 0.0257) | 5.1321 ms (+/- 0.0352) | 10.2989 ms (+/- 0.0526)|
+| Grid Stride + Vec + ILP=2 | 0.5181 ms (+/- 0.0260) | 5.1429 ms (+/- 0.0300) | 10.3335 ms (+/- 0.0941)|
+
 <h3>Throughput (GB/s)</h3>
 
 | Technique                 | 10M Elements           | 100M Elements          | 200M Elements          |
@@ -27,6 +40,7 @@ This project implements five progressively "optimized" CUDA kernels for vector a
 | Grid Stride               |      233.2             |      195.4             |      230.5             |
 | Vectorized                |      235.6             |      199.3             |      235.6             |
 | Grid Stride + Vectorized  |      218.5             |      196.2             |      233.3             |
+| Grid Stride + Vec + ILP=2 |      233.4             |      149.9             |      233.2             |
 | Grid Stride + Vec + ILP=2 |      233.4             |      149.9             |      233.2             |
 
 <h3>Efficiency (% of peak bandwidth)</h3>
