@@ -25,7 +25,7 @@ specific optimization techniques. This project was also very good for me to lear
 
 - Naive: establishes a clean baseline with perfect coalescing. 1 thread to 1 element ratio<br>
 - Grid‑stride: Allows kernel to scale using fixed number of blocks per grid while maintaing coalescing. Hardware-aware<br>
-- Vectorized (float4): Allows warp to request 512 bytes per cycle versus naive's 128 bytes, increasing memory throughout. 1 thread to 4 element ratio.<br>
+- Vectorized (float4): Allows warp to request 512 bytes per cycle versus naive's 128 bytes, decreasing the required instruction throughput. 1 thread to 4 element ratio.<br>
 - Instructional Level Parallelism: Each thread issues multiple independent memory requests, allowing for computation as these requests come in to reduce latency.
 
 Tradeoff of each Technique:
@@ -101,9 +101,14 @@ The calculated $$0.08 \text{ } \frac{\text{FLOPs}}{\text{Byte}}$$ is below 1, wh
 
 We can also confirm the naive kernel effectively saturates the DRAM to L2 cache memory line by taking a look at the Memory Chart provided by Nsight compute. <br><br>
 
-<img width="1146" height="621" alt="image" src="https://github.com/user-attachments/assets/74eb0806-0ebe-4739-bb10-8cc25744567e" />
+<img width="1266" height="628" alt="image" src="https://github.com/user-attachments/assets/ad736bff-ea89-4caf-8135-ffe5caeac5ff" />
 
 <br><br>Where the Device Memory (DRAM) to L2 Cache heat map shows a ~95% utilization rate.
+
+_**L2 Cache Hit Rate Note**_<br>
+_The L2 Cache hit rate shows 224.20% which is not possible. This is likey because when the naive kernel issues a instructional command for one float (4 bytes), the cache line has to meet its minimum transfer quota of 
+32 bytes (which matches the size of one sector in DRAM). This means while the current thread only uses 4 bytes out of 32 bytes, the next thread will issue another call for the next 4 bytes which is already in the L2 cache.
+In a warp (32 threads), this results in 1 miss (the initial call to DRAM), and 7 hits (the other 28 bytes) resultling in a higher hit rate percentage than possible._
 
 <h3>Hardware</h3>
 On current GPU (RTX 4060):<br>
