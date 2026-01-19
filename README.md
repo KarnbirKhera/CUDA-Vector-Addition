@@ -1,22 +1,27 @@
 # CUDA Vector Sum Learning Report
 
-Teaching myself CUDA through vector addition by writing my first kernel to understanding register pressure, SM occupancy, memory coalescing, and using Nsight Compute to figure out why my "optimizations" made things slower.
+<h1>Introduction</h1>
+This project is the first step in my CUDA learning journey from scratch, starting with vector addition and then progressively adding common GPU optimization techniques.
+Along the way I learned that "optimizations" don't always make things faster, and its important to use tools like NVIDIA Nsight to understand why and when to apply
+specific optimization techniques. This project was also very good for me to learn memory coalescing, ...
 
-<h2>Overview</h2>
-
-This project implements five progressively "optimized" CUDA kernels for vector addition, benchmarks them, and analyzes why the naive implementation won in this case.
-
+<h2>Goals of the Project</h2>
+- Understand how different CUDa kernel designs affect performance <br>
+- Explore grid-stride loops, vectorization and instructional level parallelism (ILP)<br>
+- Learn how register pressure affects occupancy<br>
+- Learning to read NVIDIA Nsight Compute to understand kernels at a deeper level<br>
+- Compare theoretical vs measured memory bandwidth<br>
 
 <h2>Kernels Implemented</h2>
 
-| Vector Sum Kernel                  | Techniques                             | Register Count
-|------------------------------------|----------------------------------------|-------------------------
-| 'vectorSum'                        | Naive (1 thread : 1 element)           |  16
-| 'gridStrideVectorSum'              | Grid Stride                            |  26
-| 'vectorizedVectorSum'              | Vectorization (float4)                 |  22
-| 'gridVectorizedVectorSum'          | Grid Stride + Vectorization            |  32
-| 'ILP2VectorizedGridVectorSum'      | Grid Stride + Vectorization + ILP=2    |  38
-| 'ILP4VectorizedGridVectorSum'      | Grid Stride + Vectorization + ILP=4    |  40
+| Vector Sum Kernel                  | Techniques                             | Register Count   |
+|------------------------------------|----------------------------------------|------------------|
+| 'vectorSum'                        | Naive                                  |  16              |
+| 'gridStrideVectorSum'              | Grid Stride                            |  26              |
+| 'vectorizedVectorSum'              | Vectorization (float4)                 |  22              |
+| 'gridVectorizedVectorSum'          | Grid Stride + Vectorization            |  32              |
+| 'ILP2VectorizedGridVectorSum'      | Grid Stride + Vectorization + ILP=2    |  38              |
+| 'ILP4VectorizedGridVectorSum'      | Grid Stride + Vectorization + ILP=4    |  40              |
 
 
 <h2>Benchmark Results</h2>
