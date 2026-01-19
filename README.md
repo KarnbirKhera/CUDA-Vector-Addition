@@ -34,14 +34,14 @@ This project implements five progressively "optimized" CUDA kernels for vector a
 
 <h3>Throughput (GB/s)</h3>
 
-| Technique                 | 10M Elements           | 100M Elements          | 200M Elements          |
-|---------------------------|------------------------|------------------------|------------------------|
-| Naive                     |    <ins>233.2</ins>    |    <ins>232.6</ins>    |  <ins>235.8</ins>      | 
-| Grid Stride               |      233.2             |      195.4             |      230.5             |
-| Vectorized                |      235.6             |      199.3             |      235.6             |
-| Grid Stride + Vectorized  |      218.5             |      196.2             |      233.3             |
-| Grid Stride + Vec + ILP=2 |      233.4             |      149.9             |      233.2             |
-| Grid Stride + Vec + ILP=2 |      233.4             |      149.9             |      233.2             |
+| Technique                 | 10M Elements               | 100M Elements               | 200M Elements             |
+|---------------------------|----------------------------|-----------------------------|---------------------------|
+| Naive                     | 250.990 GB/s (+/- 1.936)   | 201.345 GB/s (+/- 4.095)    | 248.635 GB/s (+/- 0.283)  | 
+| Grid Stride               | 223.361 GB/s (+/- 51.589)  | 243.254 GB/s (+/- 0.447)    | 241.734 GB/s (+/- 0.354)  |
+| Vectorized                | 250.649 GB/s (+/- 1.834)   | 231.984 GB/s (+/- 22.051)   | 248.480 GB/s (+/- 0.354)  |
+| Grid Stride + Vectorized  | 236.874 GB/s (+/- 36.313)  | 190.673 GB/s (+/- 10.590)   | 244.850 GB/s (+/- 0.463)  |
+| Grid Stride + Vec + ILP=2 | 225.437 GB/s (+/- 45.420)  | 240.270 GB/s (+/- 15.513)   | 244.861 GB/s (+/- 0.444)  |
+| Grid Stride + Vec + ILP=2 | 190.537 GB/s (+/- 56.401)  | 245.813 GB/s (+/- 0.505)    | 244.785 GB/s (+/- 0.443)  |
 
 <h3>Efficiency (% of peak bandwidth)</h3>
 
