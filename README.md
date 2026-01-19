@@ -24,22 +24,29 @@ specific optimization techniques. This project was also very good for me to lear
 | 'ILP4VectorizedGridVectorSum'      | Grid Stride + Vectorization + ILP=4    |  40              |
 
 - Naive: establishes a clean baseline with perfect coalescing. 1 thread to 1 element ratio<br>
-- Grid‑stride: Allows kernel to scale using fixed number of blocks per grid. Hardware-aware<br>
+- Grid‑stride: Allows kernel to scale using fixed number of blocks per grid while maintaing coalescing. Hardware-aware<br>
 - Vectorized (float4): Allows warp to request 512 bytes per cycle versus naive's 128 bytes, increasing memory throughout. 1 thread to 4 element ratio.<br>
 - Instructional Level Parallelism: Each thread issues multiple independent memory requests, allowing for computation as these requests come in to reduce latency.
 
 Tradeoff of each Technique:
 - Naive: Requires one thread per element, difficult to scale across various GPUs and large n size.
-- Grid-stride: Increased register pressure. Can provide un-necessary overhead if threads > n.
+- Grid-stride: Increased register pressure. Can provide un-necessary overhead if threads > n. In large datasets, can break locality to due large stride size.
 - Vectorization (float4): Increased register pressure, requires 16 byte alignment, increases coalescing complexity, can require tail handling if n is not divisble by 4.
 - Instructional Level Parallelism: Increased register pressure, increases coalescing complexity.
 
 **_Register pressure note:_**<br>
-_Increased register pressure can lead to lower occupancy, if register count per thread excedes hardware maximum, register spills into slower L2 cache_
+_Increased register pressure can lead to lower occupancy, if register count per thread excedes hardware maximum, register spills into slower L2 cache. In this case, an RTX 4060 has a maximum register per thread count of 255._
+
+<h2>Benchmark Methodology</h2>
+- Time elapsed measured using CUDA Events. This allowed accurate profiling of kernel runtime without launch overhead or other misc. factors like SM clock frequency. <br>
+- Nsight compute uses for throughput measurements.<br>
+- Efficiency calculated by (Nsight Compute Throughput)/ 272.0, the maximum theoretical memory bandwidth for RTX 4060.
+<br>
+- For each input size, the respective kernel had three warmup runs, proceeded by 10 trials which were recorded.
 
 <h2>Benchmark Results</h2>
 
-<h3>Time Elapsed (ms), measured using CUDA Events</h3>
+<h3>Time Elapsed (ms)</h3>
 
 | Technique                 | 10M Elements           | 100M Elements          | 200M Elements          |
 |---------------------------|------------------------|------------------------|------------------------|
@@ -71,6 +78,21 @@ _Increased register pressure can lead to lower occupancy, if register count per 
 | Grid Stride + Vectorized  |      87.12% (+/- 13.35%)   |      70.12% (+/- 3.89%)     |      90.03% (+/- 0.17%)     |
 | Grid Stride + Vec + ILP=2 |      82.91% (+/- 16.70%)   |      88.32% (+/- 5.70%)     |      90.03% (+/- 0.16%)     |
 | Grid Stride + Vec + ILP=4 |      70.06% (+/- 20.74%)   |      90.41% (+/- 0.19%)     |      89.99% (+/- 0.16%)     |
+
+<h2>Analysis & Interpretation</h2>
+
+**Time Elapsed Table**<br>
+Across all inputs sizes (10M, 100M, 200M), the run time difference between the kernels are extremely small (1-3% of each other). This suggests the following to me:
+- Vector addition on the RTX 4060 is purely memory bound.
+- The GPU is already saturated the DRAM bandwidth (272 GB/s) even with the naive kernel.
+- Additional cmopute related optimizations such as vectorization and ILP do not provide a benefit to runtime.
+
+We can confirm the kernel is memory bound by looking at its mathematical formula <br>
+$$C = A + B $$ 
+Where the kernel requires two float4 reads (8 bytes), one float4 write (4 bytes) and does a single compute. When plugged into Compute/Bytes to calculate FLOPS, we get 1/12 resulting in a theoretical FLOP/s of 0.08. This confirms the kernel is memory bound.
+We can also use NVIDIA Nsight's roofline chart to confirm this.
+<img width="1002" height="368" alt="image" src="https://github.com/user-attachments/assets/81fb4055-67f5-446c-be6d-76d447d58c16" />
+Where the naive kernel is on the diagonal memory roof, and to the left of the double precision ridgepoint, which suggests this kernel is memory bound.
 
 
 <h3>Hardware</h3>
