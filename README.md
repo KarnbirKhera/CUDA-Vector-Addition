@@ -38,7 +38,7 @@ Tradeoff of each Technique:
 _Increased register pressure can lead to lower occupancy, if register count per thread excedes hardware maximum, register spills into slower L2 cache. In this case, an RTX 4060 has a maximum register per thread count of 255._
 
 <h2>Benchmark Methodology</h2>
-- Time elapsed measured using CUDA Events. This allowed accurate profiling of kernel runtime without launch overhead or other misc. factors like SM clock frequency. <br>
+- Time elapsed measured using CUDA Events. This allowed accurate profiling of kernel runtime without launch overhead or other miscellaneous factors such SM clock frequency. <br>
 - Nsight compute uses for throughput measurements.<br>
 - Efficiency calculated by (Nsight Compute Throughput)/ 272.0, the maximum theoretical memory bandwidth for RTX 4060.
 <br>
