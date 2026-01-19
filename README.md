@@ -21,7 +21,8 @@ This project implements five progressively "optimized" CUDA kernels for vector a
 
 <h2>Benchmark Results</h2>
 
-<h3>Time Elapsed (measured using CUDA Events)</h3>
+<h3>Time Elapsed (ms)</h3>
+<h4>Measured using CUDA Events</h4>
 
 | Technique                 | 10M Elements           | 100M Elements          | 200M Elements          |
 |---------------------------|------------------------|------------------------|------------------------|
