@@ -88,11 +88,16 @@ Across all inputs sizes (10M, 100M, 200M), the run time difference between the k
 - Additional cmopute related optimizations such as vectorization and ILP do not provide a benefit to runtime.
 
 We can confirm the kernel is memory bound by looking at its mathematical formula <br>
-$$C = A + B $$ 
-Where the kernel requires two float4 reads (8 bytes), one float4 write (4 bytes) and does a single compute. When plugged into Compute/Bytes to calculate FLOPS, we get 1/12 resulting in a theoretical FLOP/s of 0.08. This confirms the kernel is memory bound.
-We can also use NVIDIA Nsight's roofline chart to confirm this.
+<p align="center">
+  $C = A + B$
+</p>
+Where the kernel requires two float4 reads (8 bytes), one float4 write (4 bytes) and one float operatoin. When plugged into the following equation to determine FLOPs per Byte: <br><br>
+
+$$ \text{Arithmetic Intensity} (AI) = \frac{\text{Total Operations (FLOPs)}}{\text{Total Bytes Transferred (Memory Traffic)}} $$
+
+The calculated $$0.08 \text{ } \frac{\text{FLOPs}}{\text{Byte}}$$ is below 1, which shows the kernel is memory bound. This observation can also be confirmed by looking at the roofline model provided by Nsight compute. <br><br>
 <img width="1002" height="368" alt="image" src="https://github.com/user-attachments/assets/81fb4055-67f5-446c-be6d-76d447d58c16" />
-Where the naive kernel is on the diagonal memory roof, and to the left of the double precision ridgepoint, which suggests this kernel is memory bound.
+<br><br>Where the naive kernel is on the diagonal memory roof, and to the left of the double precision ridgepoint, which also suggests this kernel is memory bound.
 
 
 <h3>Hardware</h3>
