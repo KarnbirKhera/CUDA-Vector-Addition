@@ -23,6 +23,19 @@ specific optimization techniques. This project was also very good for me to lear
 | 'ILP2VectorizedGridVectorSum'      | Grid Stride + Vectorization + ILP=2    |  38              |
 | 'ILP4VectorizedGridVectorSum'      | Grid Stride + Vectorization + ILP=4    |  40              |
 
+- Naive: establishes a clean baseline with perfect coalescing. 1 thread to 1 element ratio<br>
+- Grid‑stride: Allows kernel to scale using fixed number of blocks per grid. Hardware-aware<br>
+- Vectorized (float4): Allows warp to request 512 bytes per cycle versus naive's 128 bytes, increasing memory throughout. 1 thread to 4 element ratio.<br>
+- Instructional Level Parallelism: Each thread issues multiple independent memory requests, allowing for computation as these requests come in to reduce latency.
+
+Tradeoff of each Technique:
+- Naive: Requires one thread per element, difficult to scale across various GPUs and large n size.
+- Grid-stride: Increased register pressure. Can provide un-necessary overhead if threads > n.
+- Vectorization (float4): Increased register pressure, requires 16 byte alignment, increases coalescing complexity, can require tail handling if n is not divisble by 4.
+- Instructional Level Parallelism: Increased register pressure, increases coalescing complexity.
+
+**_Register pressure note:_**<br>
+_Increased register pressure can lead to lower occupancy, if register count per thread excedes hardware maximum, register spills into slower L2 cache_
 
 <h2>Benchmark Results</h2>
 
