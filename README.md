@@ -101,14 +101,17 @@ The calculated $$0.08 \text{ } \frac{\text{FLOPs}}{\text{Byte}}$$ is below 1, wh
 
 We can also confirm the naive kernel effectively saturates the DRAM to L2 cache memory line by taking a look at the Memory Chart provided by Nsight compute. <br><br>
 
-<img width="1266" height="628" alt="image" src="https://github.com/user-attachments/assets/ad736bff-ea89-4caf-8135-ffe5caeac5ff" />
+<img width="1106" height="573" alt="image" src="https://github.com/user-attachments/assets/50b38b74-c142-4dd5-a1dd-1e79d2eaef6a" />
 
-<br><br>Where the Device Memory (DRAM) to L2 Cache heat map shows a ~95% utilization rate.
+<br><br>Where the Device Memory (DRAM) to L2 Cache heat map shows a ~90% utilization rate.
 
-_**L2 Cache Hit Rate Note**_<br>
-_The L2 Cache hit rate shows 224.20% which is not possible. This is likey because when the naive kernel issues a instructional command for one float (4 bytes), the cache line has to meet its minimum transfer quota of 
-32 bytes (which matches the size of one sector in DRAM). This means while the current thread only uses 4 bytes out of 32 bytes, the next thread will issue another call for the next 4 bytes which is already in the L2 cache.
-In a warp (32 threads), this results in 1 miss (the initial call to DRAM), and 7 hits (the other 28 bytes) resulting in a higher hit rate percentage than possible._
+_**Additional Memory Chart Note**_<br>
+_While we're here talking about the Memory Chart, we can see an 80 MB L2 to L1 load request, and the 40 MB L1 to L2 store request, which I matches the 2 load 1 write ratio mentioned earlier, which was fun to notice._<br><br>
+_While we're here, once again, we can see from the same part of the chart that the L1 requests 80 MBs worth of data, which is the 10 million float (4 byte) elements from A, and the 10 million float (4 byte) from B being requested for a total of 80 MB. I'd imagine this a great way to check for any in-efficienes where if the ratio does not match, or we're transfering more data than needed, we can understand we have a kernel inefficiency._ <br>
+
+<br><br>We can also confirm that vectorization's reduced instructional overhead 
+
+
 
 <h3>Hardware</h3>
 On current GPU (RTX 4060):<br>
