@@ -96,21 +96,28 @@ Where the kernel requires two float4 reads (8 bytes), one float4 write (4 bytes)
 $$ \text{Arithmetic Intensity} (AI) = \frac{\text{Total Operations (FLOPs)}}{\text{Total Bytes Transferred (Memory Traffic)}} $$
 
 The calculated $$0.08 \text{ } \frac{\text{FLOPs}}{\text{Byte}}$$ is below 1, which shows the kernel is memory bound. This observation can also be confirmed by looking at the roofline model provided by Nsight compute. <br><br>
-<img width="1002" height="368" alt="image" src="https://github.com/user-attachments/assets/81fb4055-67f5-446c-be6d-76d447d58c16" />
+
+<img width="1054" height="297" alt="image" src="https://github.com/user-attachments/assets/082ffe38-3187-43a2-852d-d9b5ed8fd091" />
+
+
 <br><br>Where the naive kernel is on the diagonal memory roof, and to the left of the double precision ridgepoint, which also suggests this kernel is memory bound.
 
 We can also confirm the naive kernel effectively saturates the DRAM to L2 cache memory line by taking a look at the Memory Chart provided by Nsight compute. <br><br>
 
 <img width="1106" height="573" alt="image" src="https://github.com/user-attachments/assets/50b38b74-c142-4dd5-a1dd-1e79d2eaef6a" />
 
-<br><br>Where the Device Memory (DRAM) to L2 Cache heat map shows a ~90% utilization rate.
+<br>Where the Device Memory (DRAM) to L2 Cache heat map shows a ~90% utilization rate.
 
 _**Additional Memory Chart Note**_<br>
-_While we're here talking about the Memory Chart, we can see an 80 MB L2 to L1 load request, and the 40 MB L1 to L2 store request, which I matches the 2 load 1 write ratio mentioned earlier, which was fun to notice._<br><br>
-_While we're here, once again, we can see from the same part of the chart that the L1 requests 80 MBs worth of data, which is the 10 million float (4 byte) elements from A, and the 10 million float (4 byte) from B being requested for a total of 80 MB. I'd imagine this a great way to check for any in-efficienes where if the ratio does not match, or we're transfering more data than needed, we can understand we have a kernel inefficiency._ <br>
+_While we're here talking about the Memory Chart, we can see an 80 MB L2 to L1 load request, and the 40 MB L1 to L2 store request, which I matches the 2 load 1 write ratio mentioned earlier, which was fun to notice._<br>
 
-<br><br>We can also confirm that vectorization's reduced instructional overhead 
+_While we're here, once again, we can see from the same part of the chart that the L1 requests 80 MBs worth of data, which is the 10 million float (40 MB) elements from location A, and the 10 million floats (40 MB) from B being requested for a total of 80 MB, with a 10 million float store (40MB) from L1 to L2. I'd imagine this a great way to check for any in-efficienes where if the ratio does not match, or we're transfering more data than needed, we can understand we have a kernel inefficiency._ <br>
 
+<br><br>We can also confirm that applying float4 vectorization reduces the kernels instructional overhead. We can see this by comparing the naive memory chart (figure prior to this) to the vectorization's memory chart. <br>
+
+<img width="1093" height="562" alt="image" src="https://github.com/user-attachments/assets/151f4076-ccb4-4b7b-9a47-199156d40e89" />
+
+<br>The float4 vectorization + ILP=4 memory chart shows a decrease of instructional commands from the naive's kernels 937.50 K memory instructions to the reduced 234.38 K memory instructions (top left in the figure) due to vectorization. This demonstrates the 4x memory instruction decrease expected from float4 vectorization.
 
 
 <h3>Hardware</h3>
