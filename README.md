@@ -108,7 +108,7 @@ We can also confirm the naive kernel effectively saturates the DRAM to L2 cache 
 _**L2 Cache Hit Rate Note**_<br>
 _The L2 Cache hit rate shows 224.20% which is not possible. This is likey because when the naive kernel issues a instructional command for one float (4 bytes), the cache line has to meet its minimum transfer quota of 
 32 bytes (which matches the size of one sector in DRAM). This means while the current thread only uses 4 bytes out of 32 bytes, the next thread will issue another call for the next 4 bytes which is already in the L2 cache.
-In a warp (32 threads), this results in 1 miss (the initial call to DRAM), and 7 hits (the other 28 bytes) resultling in a higher hit rate percentage than possible._
+In a warp (32 threads), this results in 1 miss (the initial call to DRAM), and 7 hits (the other 28 bytes) resulting in a higher hit rate percentage than possible._
 
 <h3>Hardware</h3>
 On current GPU (RTX 4060):<br>
