@@ -84,8 +84,8 @@ _Increased register pressure can lead to lower occupancy, if register count per 
 **Time Elapsed Table**<br>
 Across all inputs sizes (10M, 100M, 200M), the run time difference between the kernels are extremely small (1-3% of each other). This suggests the following to me:
 - Vector addition on the RTX 4060 is purely memory bound.
-- The GPU is already saturated the DRAM bandwidth (272 GB/s) even with the naive kernel.
-- Additional cmopute related optimizations such as vectorization and ILP do not provide a benefit to runtime.
+- The GPU is already saturated the DRAM bandwidth even with the naive kernel.
+- Additional compute related optimizations such as vectorization and ILP do not provide a benefit to runtime.
 
 We can confirm the kernel is memory bound by looking at its mathematical formula <br>
 <p align="center">
@@ -99,6 +99,11 @@ The calculated $$0.08 \text{ } \frac{\text{FLOPs}}{\text{Byte}}$$ is below 1, wh
 <img width="1002" height="368" alt="image" src="https://github.com/user-attachments/assets/81fb4055-67f5-446c-be6d-76d447d58c16" />
 <br><br>Where the naive kernel is on the diagonal memory roof, and to the left of the double precision ridgepoint, which also suggests this kernel is memory bound.
 
+We can also confirm the naive kernel effectively saturates the DRAM to L2 cache memory line by taking a look at the Memory Chart provided by Nsight compute. <br><br>
+
+<img width="1146" height="621" alt="image" src="https://github.com/user-attachments/assets/74eb0806-0ebe-4739-bb10-8cc25744567e" />
+
+<br><br>Where the Device Memory (DRAM) to L2 Cache heat map shows a ~95% utilization rate.
 
 <h3>Hardware</h3>
 On current GPU (RTX 4060):<br>
