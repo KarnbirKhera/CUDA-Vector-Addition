@@ -83,10 +83,10 @@ _Increased register pressure can lead to lower occupancy, if register count per 
 
 <h3>Overview</h3>
 Throughout all three trials, the kernels all performed within 1-3% of each other despite changing input sizes. This suggests the additional optimization methods applied do not play a significant role
-in improving the naive kernel for vector addition. 
+in improving the naive kernel for vector addition. <br><br>
 
 <h3>A Deeper Dive into Vector Addition</h3>
-To better understand the performance of each of the optimization techniques, an analysis into vector addition itself provide a great starting point. Looking into the vector add formula itself:
+To better understand the performance of each of the optimization techniques, an analysis into the vector addition operation itself provides a great starting point.
 
 <br>
 <p align="center">
@@ -100,8 +100,10 @@ We can see that the kernel will have two read requests (A and B), one floating p
 $$ \text{Arithmetic Intensity} (AI) = \frac{\text{Total Operations (FLOPs)}}{\text{Total Bytes Transferred (Memory Traffic)}} $$
 
 
-The resulting value after plugging in the values results in $$0.08 \text{ } \frac{\text{FLOPs}}{\text{Byte}}$$, when compared to the arithmetic intensity of the RTX 4060 ($$55 \text{ } \frac{\text{FLOPs}}{\text{Byte}}$$), the value is significantly lower which implies
-vector add is memory bound.
+The resulting value after plugging in the values results in $$0.08 \text{ } \frac{\text{FLOPs}}{\text{Byte}}$$, when compared to the arithmetic intensity of the RTX 4060 ($$55 \text{ } \frac{\text{FLOPs}}{\text{Byte}}$$), the value is significantly lower which implies vector add is memory bound. This means the limiting factor for this operation will most likely be 
+
+<br><br>
+
 
 
 
