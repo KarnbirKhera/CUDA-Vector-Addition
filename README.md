@@ -25,7 +25,7 @@ specific optimization techniques. This project was also very good for me to lear
 
 - Naive: establishes a clean baseline with perfect coalescing. 1 thread to 1 element ratio<br>
 - Grid‑stride: Allows kernel to scale using fixed number of blocks per grid while maintaing coalescing. Hardware-aware<br>
-- Vectorized (float4): Allows warp to request 512 bytes per cycle versus naive's 128 bytes, decreasing the required instruction throughput. 1 thread to 4 element ratio.<br>
+- Vectorized (float4): Allows warp to request 512 bytes per cycle versus naive's 128 bytes, decreasing the required memory instruction to DRAM. 1 thread to 4 element ratio.<br>
 - Instructional Level Parallelism: Each thread issues multiple independent memory requests, allowing for computation as these requests come in to reduce latency.
 
 Tradeoff of each Technique:
@@ -82,7 +82,10 @@ _Increased register pressure can lead to lower occupancy, if register count per 
 <h2>Analysis & Interpretation</h2>
 
 <h3>Overview</h3>
-Throughout all three trials, the kernels all performed within 1-3% of each other despite changing input sizes. This suggests the additional optimization methods applied do not play a significant role in improving on the naive kernel for vector addition. <br><br>
+Throughout all three trials, the kernels all performed within 1-3% of each other despite changing input sizes. This suggests the additional optimization methods applied do not play a significant role in improving on the naive kernel for vector addition. 
+<br><br>
+To keep analysis focused and to avoid noise from measurement variance, all kernel specific interpetations will focus on the 200M element trials which showed the lowest standard deviation.
+<br><br>
 
 <h3>A Deeper Dive into Vector Addition</h3>
 To better understand the performance of each of the optimization techniques, an analysis into the vector addition operation itself provides a great starting point.
@@ -102,11 +105,27 @@ $$ \text{Arithmetic Intensity} (AI) = \frac{\text{Total Operations (FLOPs)}}{\te
 The result after plugging in the values results is $$0.08 \text{ } \frac{\text{FLOPs}}{\text{Byte}}$$, when compared to the arithmetic intensity of the RTX 4060 ($$55 \text{ } \frac{\text{FLOPs}}{\text{Byte}}$$), the value is significantly lower which implies the operation is memory bound. This means the limiting factor for this operation will most likely be DRAM bandwidth, which is also hinted by the 80-90% memory throughput by all the kernels.
 
 <h3>Naive Kernel</h3>
-The naive kernel performed consistently across the 10M, 100M, and 200M trials, despite having no optimization techniques, the kernel performed steadily with a throughput of ~236-237 GB/s.
+The naive kernel set a strong baseline in the trial with coalesced memory access and minimal instructional overhead (only one if statement). Each thread loads 2 elements, does one floating point operation, and stores 1 element. <br><br>
+
+Because vector addition operation has a very low arithmetic intensity, and the naive kernel has a low register count of 16 which allows for more parallelism, the naive kernel already saturates the DRAM bandwidth, achieving a memory throughput of ~236 GB/s which is ~87% of the peak bandwidth without any optimizations. Any optimization to this kernel would have to reduce memory traffic through techniques like lower precision, caching or kernel fusing, the latter two not being possible with a simple kernel like this one.
 
 <h3>Grid Stride</h3>
-The kernels that utilized grid stride performed
+Grid stride detaches the 1 thread to 1 element ratio found in the naive kernel, allowing it to run on any GPU and scale to any n size. In this case, grid stride provided an unnecessary instructional overhead as well as increased register pressure. For large n sizes, grid stride also reduced locality when paired with ILP where the large strides required a single thread
+to call for multiple sectors for away from one another. <br><br>
 
+Because the orginial kernel was memory bound, the extra instructions and register pressure simply added overhead resulting in a 1-3% decrease in memory throughput. Grid stride is still a very effective technique that allows the kernel to scale, but not effective in raw performance for a memory bound kernel.
+
+<h3>Vectorization</h3>
+Vectorization (float4) reduces the memory instructions to the DRAM by having a single thread call for 4 floats at once, rather in the naive where a thread calls for a single float utilizing only 4 bytes out of 32 bytes provided by the request. Float4 vectorization allows perfect utilization of this minimum 32 byte memory transaction from the DRAMs 32 byte sectors.<br><br>
+
+Although vectorization is more efficient when it comes to memory instructions, it does not tackle the memory bound nature of the kernel. The kernel does perform at a similar level as the naive likely because the only additional instructional overhead is in the tail end of the kernel.
+
+<h3>Instructional Level Parallelism</h3>
+Instructional Level Parallelism allows for latency hiding by issuing multiple independent memory transactions at the same time. This allows the arithmetic operations to take place while the memory from the DRAM is already traveling to the thread for the next arithmetic operation.<br><br>
+
+While ILP provides latency hiding, it does not tackle the memory bound nature of the kernel. The kernel performs slightly worse than the naive likely due to the increased instructional overhead.
+
+<h2>Nsight Compute Findings</h2>
 <br><br>
 
 
