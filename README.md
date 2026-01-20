@@ -50,37 +50,77 @@ _Increased register pressure can lead to lower occupancy, if register count per 
 
 | Technique                 | 10M Elements           | 100M Elements          | 200M Elements           |
 |---------------------------|------------------------|------------------------|-------------------------|
-| Naive                     | 0.5554 ms (+/- 0.1128) | 5.1167 ms (+/- 0.1525) | 10.1299 ms (+/- 0.0416) |
-| Grid Stride               | 0.5173 ms (+/- 0.0309) | 5.2019 ms (+/- 0.1493) | 10.3402 ms (+/- 0.0535) |
-| Vectorized                | 0.5062 ms (+/- 0.0273) | 5.4275 ms (+/- 0.2707) | 10.1386 ms (+/- 0.0474) |
-| Grid Stride + Vectorized  | 0.5131 ms (+/- 0.0332) | 5.5656 ms (+/- 0.1066) | 10.2593 ms (+/- 0.0793) |
-| Grid Stride + Vec + ILP=2 | 0.5108 ms (+/- 0.0324) | 5.6078 ms (+/- 0.0986) | 10.2351 ms (+/- 0.0501) |
-| Grid Stride + Vec + ILP=4 | 0.5143 ms (+/- 0.0399) | 5.6131 ms (+/- 0.0852) | 10.2347 ms (+/- 0.0450) |
+| Naive                     | 0.5076 ms (+/- 0.0278) | 5.0845 ms (+/- 0.0313) | 10.1631 ms (+/- 0.0450) |
+| Grid Stride               | 0.5173 ms (+/- 0.0295) | 5.1882 ms (+/- 0.0292) | 10.3875 ms (+/- 0.0425) |
+| Vectorized                | 0.5076 ms (+/- 0.0289) | 5.0906 ms (+/- 0.0314) | 10.1706 ms (+/- 0.0354) |
+| Grid Stride + Vectorized  | 0.5132 ms (+/- 0.0304) | 5.1377 ms (+/- 0.0293) | 10.3008 ms (+/- 0.0840) |
+| Grid Stride + Vec + ILP=2 | 0.5129 ms (+/- 0.0294) | 5.1274 ms (+/- 0.0275) | 10.2675 ms (+/- 0.0431) |
+| Grid Stride + Vec + ILP=4 | 0.5129 ms (+/- 0.0281) | 5.1463 ms (+/- 0.0364) | 10.2778 ms (+/- 0.0451) |
 
 <h3>Throughput (GB/s)</h3>
 
 | Technique                 | 10M Elements           | 100M Elements          | 200M Elements          |
 |---------------------------|------------------------|------------------------|------------------------|
-| Naive                     | 223.31 (+/- 35.75)     | 234.72 (+/- 6.51)      | 236.93 (+/- 0.97)      |
-| Grid Stride               | 232.73 (+/- 13.01)     | 230.86 (+/- 6.20)      | 232.11 (+/- 1.20)      |
-| Vectorized                | 237.74 (+/- 12.38)     | 221.65 (+/- 11.02)     | 236.73 (+/- 1.11)      |
-| Grid Stride + Vectorized  | 234.81 (+/- 14.44)     | 215.69 (+/- 4.13)      | 233.95 (+/- 1.80)      |
-| Grid Stride + Vec + ILP=2 | 235.84 (+/- 14.39)     | 214.05 (+/- 3.80)      | 234.49 (+/- 1.15)      |
-| Grid Stride + Vec + ILP=4 | 234.63 (+/- 16.74)     | 213.83 (+/- 3.28)      | 234.50 (+/- 1.03)      |
+| Naive                     | 237.08 (+/- 12.66)     | 236.02 (+/- 1.46)      | 236.15 (+/- 1.05)      |
+| Grid Stride               | 232.71 (+/- 12.94)     | 231.30 (+/- 1.30)      | 231.05 (+/- 0.94)      |
+| Vectorized                | 237.17 (+/- 13.06)     | 235.74 (+/- 1.45)      | 235.98 (+/- 0.82)      |
+| Grid Stride + Vectorized  | 234.61 (+/- 13.40)     | 233.58 (+/- 1.34)      | 233.01 (+/- 1.88)      |
+| Grid Stride + Vec + ILP=2 | 234.72 (+/- 13.18)     | 234.04 (+/- 1.25)      | 233.75 (+/- 0.98)      |
+| Grid Stride + Vec + ILP=4 | 234.65 (+/- 12.33)     | 233.19 (+/- 1.64)      | 233.52 (+/- 1.03)      ||
 
 <h3>Efficiency (% of peak bandwidth)</h3>
 
 | Technique                 | 10M Elements           | 100M Elements          | 200M Elements          |
 |---------------------------|------------------------|------------------------|------------------------|
-| Naive                     | 82.10% (+/- 13.14%)    | 86.29% (+/- 2.39%)     | 87.11% (+/- 0.36%)     |
-| Grid Stride               | 85.56% (+/- 4.78%)     | 84.88% (+/- 2.28%)     | 85.33% (+/- 0.44%)     |
-| Vectorized                | 87.40% (+/- 4.55%)     | 81.49% (+/- 4.05%)     | 87.03% (+/- 0.41%)     |
-| Grid Stride + Vectorized  | 86.33% (+/- 5.31%)     | 79.30% (+/- 1.52%)     | 86.01% (+/- 0.66%)     |
-| Grid Stride + Vec + ILP=2 | 86.70% (+/- 5.29%)     | 78.70% (+/- 1.40%)     | 86.21% (+/- 0.42%)     |
-| Grid Stride + Vec + ILP=4 | 86.26% (+/- 6.16%)     | 78.62% (+/- 1.21%)     | 86.21% (+/- 0.38%)     |
+| Naive                     | 87.16% (+/- 4.65%)     | 86.77% (+/- 0.54%)     | 86.82% (+/- 0.38%)     |
+| Grid Stride               | 85.56% (+/- 4.76%)     | 85.04% (+/- 0.48%)     | 84.94% (+/- 0.35%)     |
+| Vectorized                | 87.19% (+/- 4.80%)     | 86.67% (+/- 0.53%)     | 86.76% (+/- 0.30%)     |
+| Grid Stride + Vectorized  | 86.25% (+/- 4.93%)     | 85.87% (+/- 0.49%)     | 85.66% (+/- 0.69%)     |
+| Grid Stride + Vec + ILP=2 | 86.30% (+/- 4.84%)     | 86.05% (+/- 0.46%)     | 85.94% (+/- 0.36%)     |
+| Grid Stride + Vec + ILP=4 | 86.27% (+/- 4.53%)     | 85.73% (+/- 0.60%)     | 85.85% (+/- 0.38%)     ||
 
 <h2>Analysis & Interpretation</h2>
 
+<h3>Overview</h3>
+Throughout all three trials, the kernels all performed within 1-3% of each other despite changing input sizes. This suggests the additional optimization methods applied do not play a significant role
+in improving the naive kernel for vector addition. 
+
+<h3>A Deeper Dive into Vector Addition</h3>
+To better understand the performance of each of the optimization techniques, an analysis into vector addition itself provide a great starting point. Looking into the vector add formula itself:
+
+<br>
+<p align="center">
+  $C = A + B$
+</p>
+<br>
+
+We can see that the kernel will have two read requests (A and B), one floating point operation (A + B) and one store request (C). This means the kernel will move 12 bytes of data (3 floats) and will perform one floating point operation (addition). We can plug these values into the following formula to determine the arithmetic intensity of the kernel.
+
+
+$$ \text{Arithmetic Intensity} (AI) = \frac{\text{Total Operations (FLOPs)}}{\text{Total Bytes Transferred (Memory Traffic)}} $$
+
+
+The resulting value after plugging in the values results in $$0.08 \text{ } \frac{\text{FLOPs}}{\text{Byte}}$$, when compared to the arithmetic intensity of the RTX 4060 ($$55 \text{ } \frac{\text{FLOPs}}{\text{Byte}}$$), the value is significantly lower which implies
+vector add is memory bound.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
 **Time Elapsed Table**<br>
 Across all inputs sizes (10M, 100M, 200M), the run time difference between the kernels are extremely small (1-3% of each other). This suggests the following to me:
 - Vector addition on the RTX 4060 is purely memory bound.
@@ -104,7 +144,8 @@ The calculated $$0.08 \text{ } \frac{\text{FLOPs}}{\text{Byte}}$$ is below 1, wh
 
 We can also confirm the naive kernel effectively saturates the DRAM to L2 cache memory line by taking a look at the Memory Chart provided by Nsight compute. <br><br>
 
-<img width="1106" height="573" alt="image" src="https://github.com/user-attachments/assets/50b38b74-c142-4dd5-a1dd-1e79d2eaef6a" />
+<img width="1054" height="585" alt="image" src="https://github.com/user-attachments/assets/c59a3861-0e9c-4da2-ab1f-be7b6533ebf5" />
+
 
 <br>Where the Device Memory (DRAM) to L2 Cache heat map shows a ~90% utilization rate.
 
@@ -115,7 +156,7 @@ _While we're here, once again, we can see from the same part of the chart that t
 
 <br><br>We can also confirm that applying float4 vectorization reduces the kernels instructional overhead. We can see this by comparing the naive memory chart (figure prior to this) to the vectorization's memory chart. <br>
 
-<img width="1093" height="562" alt="image" src="https://github.com/user-attachments/assets/151f4076-ccb4-4b7b-9a47-199156d40e89" />
+<img width="874" height="502" alt="download" src="https://github.com/user-attachments/assets/312952e5-2d2c-4597-bb20-a26b00c15bda" />
 
 <br>The float4 vectorization + ILP=4 memory chart shows a decrease of instructional commands from the naive's kernels 937.50 K memory instructions to the reduced 234.38 K memory instructions (top left in the figure) due to vectorization. This demonstrates the 4x memory instruction decrease expected from float4 vectorization.
 
