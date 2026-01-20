@@ -77,13 +77,12 @@ _Increased register pressure can lead to lower occupancy, if register count per 
 | Vectorized                | 87.19% (+/- 4.80%)     | 86.67% (+/- 0.53%)     | 86.76% (+/- 0.30%)     |
 | Grid Stride + Vectorized  | 86.25% (+/- 4.93%)     | 85.87% (+/- 0.49%)     | 85.66% (+/- 0.69%)     |
 | Grid Stride + Vec + ILP=2 | 86.30% (+/- 4.84%)     | 86.05% (+/- 0.46%)     | 85.94% (+/- 0.36%)     |
-| Grid Stride + Vec + ILP=4 | 86.27% (+/- 4.53%)     | 85.73% (+/- 0.60%)     | 85.85% (+/- 0.38%)     ||
+| Grid Stride + Vec + ILP=4 | 86.27% (+/- 4.53%)     | 85.73% (+/- 0.60%)     | 85.85% (+/- 0.38%)     |
 
 <h2>Analysis & Interpretation</h2>
 
 <h3>Overview</h3>
-Throughout all three trials, the kernels all performed within 1-3% of each other despite changing input sizes. This suggests the additional optimization methods applied do not play a significant role
-in improving the naive kernel for vector addition. <br><br>
+Throughout all three trials, the kernels all performed within 1-3% of each other despite changing input sizes. This suggests the additional optimization methods applied do not play a significant role in improving on the naive kernel for vector addition. <br><br>
 
 <h3>A Deeper Dive into Vector Addition</h3>
 To better understand the performance of each of the optimization techniques, an analysis into the vector addition operation itself provides a great starting point.
@@ -94,13 +93,19 @@ To better understand the performance of each of the optimization techniques, an 
 </p>
 <br>
 
-We can see that the kernel will have two read requests (A and B), one floating point operation (A + B) and one store request (C). This means the kernel will move 12 bytes of data (3 floats) and will perform one floating point operation (addition). We can plug these values into the following formula to determine the arithmetic intensity of the kernel.
+We can see that the kernel will have two read requests (A and B), one floating point operation (A + B) and one store request (C). This means the kernel will move a total of 12 bytes of data (3 floats) and will perform one floating point operation (addition). We can plug these values into the following formula to determine the arithmetic intensity of the kernel.
 
 
 $$ \text{Arithmetic Intensity} (AI) = \frac{\text{Total Operations (FLOPs)}}{\text{Total Bytes Transferred (Memory Traffic)}} $$
 
 
-The resulting value after plugging in the values results in $$0.08 \text{ } \frac{\text{FLOPs}}{\text{Byte}}$$, when compared to the arithmetic intensity of the RTX 4060 ($$55 \text{ } \frac{\text{FLOPs}}{\text{Byte}}$$), the value is significantly lower which implies vector add is memory bound. This means the limiting factor for this operation will most likely be 
+The result after plugging in the values results is $$0.08 \text{ } \frac{\text{FLOPs}}{\text{Byte}}$$, when compared to the arithmetic intensity of the RTX 4060 ($$55 \text{ } \frac{\text{FLOPs}}{\text{Byte}}$$), the value is significantly lower which implies the operation is memory bound. This means the limiting factor for this operation will most likely be DRAM bandwidth, which is also hinted by the 80-90% memory throughput by all the kernels.
+
+<h3>Naive Kernel</h3>
+The naive kernel performed consistently across the 10M, 100M, and 200M trials, despite having no optimization techniques, the kernel performed steadily with a throughput of ~236-237 GB/s.
+
+<h3>Grid Stride</h3>
+The kernels that utilized grid stride performed
 
 <br><br>
 
