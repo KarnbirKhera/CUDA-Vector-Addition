@@ -6,7 +6,7 @@ Along the way I learned that "optimizations" don't always make things faster, an
 specific optimization techniques. This project was also very good for me to learn memory coalescing, ...
 
 <h2>Goals of the Project</h2>
-- Understand how different CUDa kernel designs affect performance <br>
+- Understand how different CUDA kernel designs affect performance <br>
 - Explore grid-stride loops, vectorization and instructional level parallelism (ILP)<br>
 - Learn how register pressure affects occupancy<br>
 - Learning to read NVIDIA Nsight Compute to understand kernels at a deeper level<br>
