@@ -5,14 +5,14 @@ This project is the first step in my CUDA learning journey from scratch, startin
 Along the way I learned that "optimizations" don't always make things faster, and its important to use tools like NVIDIA Nsight to understand why and when to apply
 specific optimization techniques. This project was also very good for me to learn memory coalescing, ...
 
-<h2>Goals of the Project</h2>
+<h1>Goals of the Project</h1>
 - Understand how different CUDA kernel designs affect performance <br>
 - Explore grid-stride loops, vectorization and instructional level parallelism (ILP)<br>
 - Learn how register pressure affects occupancy<br>
 - Learning to read NVIDIA Nsight Compute to understand kernels at a deeper level<br>
 - Compare theoretical vs measured memory bandwidth<br>
 
-<h2>Kernels Implemented</h2>
+<h1>Kernels Implemented</h1>
 
 | Vector Sum Kernel                  | Techniques                             | Register Count   |
 |------------------------------------|----------------------------------------|------------------|
@@ -37,16 +37,16 @@ Tradeoff of each Technique:
 **_Register pressure note:_**<br>
 _Increased register pressure can lead to lower occupancy, if register count per thread excedes hardware maximum, register spills into slower L2 cache. In this case, an RTX 4060 has a maximum register per thread count of 255._
 
-<h2>Benchmark Methodology</h2>
+<h1>Benchmark Methodology</h1>
 - Time elapsed measured using CUDA Events. This allowed accurate profiling of kernel runtime without launch overhead or other miscellaneous factors such SM clock frequency. <br>
 - Nsight compute uses for throughput measurements.<br>
 - Efficiency calculated by (Nsight Compute Throughput)/ 272.0, the maximum theoretical memory bandwidth for RTX 4060.
 <br>
 - For each input size, the respective kernel had three warmup runs, proceeded by 10 trials which were recorded.
 
-<h2>Benchmark Results</h2>
+<h1>Benchmark Results</h1>
 
-<h3>Time Elapsed (ms)</h3>
+<h2>Time Elapsed (ms)</h2>
 
 | Technique                 | 10M Elements           | 100M Elements          | 200M Elements           |
 |---------------------------|------------------------|------------------------|-------------------------|
@@ -57,7 +57,7 @@ _Increased register pressure can lead to lower occupancy, if register count per 
 | Grid Stride + Vec + ILP=2 | 0.5129 ms (+/- 0.0294) | 5.1274 ms (+/- 0.0275) | 10.2675 ms (+/- 0.0431) |
 | Grid Stride + Vec + ILP=4 | 0.5129 ms (+/- 0.0281) | 5.1463 ms (+/- 0.0364) | 10.2778 ms (+/- 0.0451) |
 
-<h3>Throughput (GB/s)</h3>
+<h2>Throughput (GB/s)</h2>
 
 | Technique                 | 10M Elements           | 100M Elements          | 200M Elements          |
 |---------------------------|------------------------|------------------------|------------------------|
@@ -68,7 +68,7 @@ _Increased register pressure can lead to lower occupancy, if register count per 
 | Grid Stride + Vec + ILP=2 | 234.72 (+/- 13.18)     | 234.04 (+/- 1.25)      | 233.75 (+/- 0.98)      |
 | Grid Stride + Vec + ILP=4 | 234.65 (+/- 12.33)     | 233.19 (+/- 1.64)      | 233.52 (+/- 1.03)      ||
 
-<h3>Efficiency (% of peak bandwidth)</h3>
+<h2>Efficiency (% of peak bandwidth)</h2>
 
 | Technique                 | 10M Elements           | 100M Elements          | 200M Elements          |
 |---------------------------|------------------------|------------------------|------------------------|
@@ -79,15 +79,15 @@ _Increased register pressure can lead to lower occupancy, if register count per 
 | Grid Stride + Vec + ILP=2 | 86.30% (+/- 4.84%)     | 86.05% (+/- 0.46%)     | 85.94% (+/- 0.36%)     |
 | Grid Stride + Vec + ILP=4 | 86.27% (+/- 4.53%)     | 85.73% (+/- 0.60%)     | 85.85% (+/- 0.38%)     |
 
-<h2>Analysis & Interpretation</h2>
+<h1>Analysis & Interpretation</h1>
 
-<h3>Overview</h3>
+<h2>Overview</h2>
 Throughout all three trials, the kernels all performed within 1-3% of each other despite changing input sizes. This suggests the additional optimization methods applied do not play a significant role in improving on the naive kernel for vector addition. 
 <br><br>
 To keep analysis focused and to avoid noise from measurement variance, all kernel specific interpetations will focus on the 200M element trials which showed the lowest standard deviation.
 <br><br>
 
-<h3>A Deeper Dive into Vector Addition</h3>
+<h2>A Deeper Dive into Vector Addition</h2>
 To better understand the performance of each of the optimization techniques, an analysis into the vector addition operation itself provides a great starting point.
 
 <br>
@@ -104,29 +104,36 @@ $$ \text{Arithmetic Intensity} (AI) = \frac{\text{Total Operations (FLOPs)}}{\te
 
 The result after plugging in the values results is $$0.08 \text{ } \frac{\text{FLOPs}}{\text{Byte}}$$, when compared to the arithmetic intensity of the RTX 4060 ($$55 \text{ } \frac{\text{FLOPs}}{\text{Byte}}$$), the value is significantly lower which implies the operation is memory bound. This means the limiting factor for this operation will most likely be DRAM bandwidth, which is also hinted by the 80-90% memory throughput by all the kernels.
 
-<h3>Naive Kernel</h3>
+<h2>Naive Kernel</h2>
 The naive kernel set a strong baseline in the trial with coalesced memory access and minimal instructional overhead (only one if statement). Each thread loads 2 elements, does one floating point operation, and stores 1 element. <br><br>
 
 Because vector addition operation has a very low arithmetic intensity, and the naive kernel has a low register count of 16 which allows for more parallelism, the naive kernel already saturates the DRAM bandwidth, achieving a memory throughput of ~236 GB/s which is ~87% of the peak bandwidth without any optimizations. Any optimization to this kernel would have to reduce memory traffic through techniques like lower precision, caching or kernel fusing, the latter two not being possible with a simple kernel like this one.
 
-<h3>Grid Stride</h3>
+<h2>Grid Stride</h2>
 Grid stride detaches the 1 thread to 1 element ratio found in the naive kernel, allowing it to run on any GPU and scale to any n size. In this case, grid stride provided an unnecessary instructional overhead as well as increased register pressure. For large n sizes, grid stride also reduced locality when paired with ILP where the large strides required a single thread
 to call for multiple sectors for away from one another. <br><br>
 
 Because the orginial kernel was memory bound, the extra instructions and register pressure simply added overhead resulting in a 1-3% decrease in memory throughput. Grid stride is still a very effective technique that allows the kernel to scale, but not effective in raw performance for a memory bound kernel.
 
-<h3>Vectorization</h3>
+<h2>Vectorization</h2>
 Vectorization (float4) reduces the memory instructions to the DRAM by having a single thread call for 4 floats at once, rather in the naive where a thread calls for a single float utilizing only 4 bytes out of 32 bytes provided by the request. Float4 vectorization allows perfect utilization of this minimum 32 byte memory transaction from the DRAMs 32 byte sectors.<br><br>
 
 Although vectorization is more efficient when it comes to memory instructions, it does not tackle the memory bound nature of the kernel. The kernel does perform at a similar level as the naive likely because the only additional instructional overhead is in the tail end of the kernel.
 
-<h3>Instructional Level Parallelism</h3>
+<h2>Instructional Level Parallelism</h2>
 Instructional Level Parallelism allows for latency hiding by issuing multiple independent memory transactions at the same time. This allows the arithmetic operations to take place while the memory from the DRAM is already traveling to the thread for the next arithmetic operation.<br><br>
 
-While ILP provides latency hiding, it does not tackle the memory bound nature of the kernel. The kernel performs slightly worse than the naive likely due to the increased instructional overhead.
+While ILP provides latency hiding, it does not tackle the memory bound nature of the kernel. The kernel performs slightly worse than the naive likely due to the increased instructional overhead.<br><br>
 
-<h2>Nsight Compute Findings</h2>
+<h1>Nsight Compute Findings</h1>
+
+While CUDA timing shows us the runtime of each kernel, Nsight Compute allows us to dig deeper into the more interesting and fundamental parts of our kernel. Getting to explore the roofline model, memory charts, occupancy, warp stall reasons (which has been very helpful) and cache acitivty has been incredbily helpful for understanding how the GPU responds to each of the optimization techniques. These insights helped me connect the benchmark results to the underlying hardware behavior which I will break down in this section for each optimization in the 200M element trials as it had the lowest standard deviation.
 <br><br>
+
+<h2>Naive</h2>
+<h3>Memory & Compute Throughput</h3>
+<img width="1726" height="170" alt="image" src="https://github.com/user-attachments/assets/8065c230-aa44-41e8-96b3-13ab9f2ea36a" />
+The naive kernel's memory throughput is 93.93% the speed of light (SOL) and a compute throughput of 11.17% of SOL.
 
 
 
