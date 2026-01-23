@@ -151,8 +151,8 @@ The naive kernel has an Achieved Occupancy of 84.00%, with an Achieved Active Wa
 This points out a great distinction between theoretical occupancy and the actual achieved occupancy. Theoretical occupancy assumes with a block size of 256 threads, each SM can actively operate with 6 blocks each, reaching the 1,536 maximum threads per SM limit (100% occupancy), in reality, each SM handled 5 blocks or 1,280 threads. This is likely because of some small implicit overhead such as from launching the blocks themselves, or switching between blocks, that prevents the last jump from 5 blocks (1,280 threads) to 6 blocks (1,536 threads) per SM. If I were to assume, a smaller thread per block size would result in higher occupancy, but doubling the amount of blocks required would likely increase the block lanuch overhead resulting in either little to no gain.
 
 <h3>Cache Behavior</h3>
-The naive kernel has 
-
+<img width="407" height="598" alt="image" src="https://github.com/user-attachments/assets/a1fe5f9b-8f91-42e5-8cee-7a5720233b57" />
+The naive kernel has an L1 cache hit rate of 0% and an L2 cache hit rate of 31.53%. While vector add does not reuse data, the way sectors and cache lines are fetched allows for data reuse in the L2 cache. When the naive kernel requests for a 4 byte float from global memory (DRAM), the cache line at minimum must send 32 bytes to match the 32 byte sector size of the DRAM. In a warp of 32 threads, 32 consecutive calls to the DRAM will results in 128 bytes of fetched data (although 
 
 
 
