@@ -165,45 +165,7 @@ The naive kernel has an L1 cache hit rate of 0% and an L2 cache hit rate of 31.5
 
 
 
-<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
-**Time Elapsed Table**<br>
-Across all inputs sizes (10M, 100M, 200M), the run time difference between the kernels are extremely small (1-3% of each other). This suggests the following to me:
-- Vector addition on the RTX 4060 is purely memory bound.
-- The GPU is already saturated the DRAM bandwidth even with the naive kernel.
-- Additional compute related optimizations such as vectorization and ILP do not provide a benefit to runtime.
 
-We can confirm the kernel is memory bound by looking at its mathematical formula <br>
-<p align="center">
-  $C = A + B$
-</p>
-Where the kernel requires two float4 reads (8 bytes), one float4 write (4 bytes) and one float operatoin. When plugged into the following equation to determine FLOPs per Byte: <br><br>
-
-$$ \text{Arithmetic Intensity} (AI) = \frac{\text{Total Operations (FLOPs)}}{\text{Total Bytes Transferred (Memory Traffic)}} $$
-
-The calculated $$0.08 \text{ } \frac{\text{FLOPs}}{\text{Byte}}$$ is below 1, which shows the kernel is memory bound. This observation can also be confirmed by looking at the roofline model provided by Nsight compute. <br><br>
-
-<img width="1054" height="297" alt="image" src="https://github.com/user-attachments/assets/082ffe38-3187-43a2-852d-d9b5ed8fd091" />
-
-
-<br><br>Where the naive kernel is on the diagonal memory roof, and to the left of the double precision ridgepoint, which also suggests this kernel is memory bound.
-
-We can also confirm the naive kernel effectively saturates the DRAM to L2 cache memory line by taking a look at the Memory Chart provided by Nsight compute. <br><br>
-
-<img width="1054" height="585" alt="image" src="https://github.com/user-attachments/assets/c59a3861-0e9c-4da2-ab1f-be7b6533ebf5" />
-
-
-<br>Where the Device Memory (DRAM) to L2 Cache heat map shows a ~90% utilization rate.
-
-_**Additional Memory Chart Note**_<br>
-_While we're here talking about the Memory Chart, we can see an 80 MB L2 to L1 load request, and the 40 MB L1 to L2 store request, which I matches the 2 load 1 write ratio mentioned earlier, which was fun to notice._<br>
-
-_While we're here, once again, we can see from the same part of the chart that the L1 requests 80 MBs worth of data, which is the 10 million float (40 MB) elements from location A, and the 10 million floats (40 MB) from B being requested for a total of 80 MB, with a 10 million float store (40MB) from L1 to L2. I'd imagine this a great way to check for any in-efficienes where if the ratio does not match, or we're transfering more data than needed, we can understand we have a kernel inefficiency._ <br>
-
-<br><br>We can also confirm that applying float4 vectorization reduces the kernels instructional overhead. We can see this by comparing the naive memory chart (figure prior to this) to the vectorization's memory chart. <br>
-
-<img width="874" height="502" alt="download" src="https://github.com/user-attachments/assets/312952e5-2d2c-4597-bb20-a26b00c15bda" />
-
-<br>The float4 vectorization + ILP=4 memory chart shows a decrease of instructional commands from the naive's kernels 937.50 K memory instructions to the reduced 234.38 K memory instructions (top left in the figure) due to vectorization. This demonstrates the 4x memory instruction decrease expected from float4 vectorization.
 
 
 <h3>Hardware</h3>
