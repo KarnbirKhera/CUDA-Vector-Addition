@@ -152,9 +152,9 @@ This points out a great distinction between theoretical occupancy and the actual
 
 <h3>Cache Behavior</h3>
 <img width="407" height="598" alt="image" src="https://github.com/user-attachments/assets/a1fe5f9b-8f91-42e5-8cee-7a5720233b57" /><br>
-The naive kernel has an L1 cache hit rate of 0% and an L2 cache hit rate of 31.53%. While vector add does not reuse data, the way sectors and cache lines are fetched allows for data reuse in the L2 cache. When the naive kernel requests for a 4 byte float from global memory (DRAM), the cache line at minimum must send 32 bytes to match the 32 byte sector size of the DRAM. In a warp of 32 threads, 32 consecutive calls to the DRAM will results in 128 bytes of fetched data.
+The naive kernel has an L1 cache hit rate of 0% which is expected as vector add fundamentally does not reuse data. Although, the L2 cache does have a hit rate of 31.53% which is very unexpected. This is interesting because say in the naive kernel, a single thread requests 4 bytes of data, at a warp level memory call, that is 128 bytes. This fits perfectly into the 128 byte cache line of the RTX 4060, and also perfectly accesses four 32 byte sectors in the DRAM, so at the moment this is a mystery to me.
 
-
+After looking into why this might be the case, one potential answer lies in why 2:1 ratio, and show tables make l2-full
 
 
 
