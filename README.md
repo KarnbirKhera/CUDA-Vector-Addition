@@ -183,7 +183,7 @@ From the following SASS panel for the naive kernel we see a "Store to Global Mem
 - When writing to DRAM, if cache HIT: A single write instruction
 - When writing to DRAM, if cache MISS: A single read instruction, followed later by a write instruction
 
-For this kernel we have a single 4 byte float write per thread, on a warp scale this results in a perfect 128 byte write to the 128 byte cache line. This means for every warp write, there is a very high likelyhood the required four 32 byte sectors in the DRAM are not in the L2 cache. This means every warp write will result in a cache line miss, because of this the kernel is required to do a DRAM read of the four 32 byte sectors in the DRAM before writing. This is supported by following images where the L2 lts__t_sectors_op_read.sum is 1538775, and in the Nsight compute kernel we have a very similar number, meaning these cache line misses contribute significantly to the L2 read number we are seeing.
+For this kernel we have a single 4 byte float write per thread, on a warp scale this results in a perfect 128 byte write to the 128 byte cache line. This means for every warp write, there is a very high likelyhood the required four 32 byte sectors in the DRAM are not in the L2 cache. This means every warp write will result in a cache line miss, because of this the kernel is required to do a DRAM read of the four 32 byte sectors in the DRAM before writing. This is supported by following images where the L2 lts__t_sectors_op_read.sum is 1,538,775, and in the Nsight compute kernel we have a total sector misses to device of 1,508,103
 
 <img width="743" height="384" alt="image" src="https://github.com/user-attachments/assets/d2abd6c8-cef8-4766-bff0-3e1dc93ac3c7" />
 
