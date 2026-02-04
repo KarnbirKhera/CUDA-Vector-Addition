@@ -173,12 +173,23 @@ We can see from the Nsight compute, the L2 cache hit rate is ~0.07%, which is su
 <img width="451" height="515" alt="image" src="https://github.com/user-attachments/assets/564b7637-e51f-4ec8-841c-703378b9e2ba" />
 <img width="1316" height="466" alt="image" src="https://github.com/user-attachments/assets/08c194d5-16ee-4731-8704-2f584a1ba4d0" />
 <br>
-We can see fromt he Nsight compute, the L2 cache hit rate is ~96%, which supported by the detailed L2 report. This percentage is made up of 1435086 reads and 25002522 writes (C[i]). The 1435086 reads is very interesting as the code itself has no A[i] and B[i] reads. After further analysis:
+We can see fromt he Nsight compute, the L2 cache hit rate is ~96%, which supported by the detailed L2 report. This percentage is made up of 1435086 reads and 25002522 writes (C[i]). The 1435086 reads is very interesting as the code itself has no A[i] and B[i] reads. After further analysis:<br>
 
-<img width="1198" height="131" alt="image" src="https://github.com/user-attachments/assets/ed323b62-970c-4b4c-bdce-82702a979bdf" />
+<img width="1413" height="188" alt="image" src="https://github.com/user-attachments/assets/ed3db8eb-4af4-4984-b1cd-bc7dd2b9ccb1" />
 
 <br>
-From the following SASS screenshot, we can see the the "Load from Constant Memory into a Uniform Register" (ULDC) likely contributes massively to the 1435086 reads we see in our write-only kernel.
+From the following SASS panel for the naive kernel we see a "Store to Global Memory" STG.E instruction. From my current understanding on the RTX 4060 hardware architecture the way the STG.E instruction works.<br>
+
+- When writing to DRAM, if cache HIT: A single write instruction
+- When writing to DRAM, if cache MISS: A single read instruction, followed later by a write instruction
+
+For this kernel we have a single 4 byte float write per thread, on a warp scale this results in a perfect 128 byte write to the 128 byte cache line. This means for every warp write, there is a very high likelyhood the required four 32 byte sectors in the DRAM are not in the L2 cache. This means every warp write will result in a cache line miss, because of this the kernel is required to do a DRAM read of the four 32 byte sectors in the DRAM before writing. This is supported by following images where the L2 lts__t_sectors_op_read.sum is 1538775, and in the Nsight compute kernel we have a very similar number, meaning these cache line misses contribute significantly to the L2 read number we are seeing.
+
+<img width="743" height="384" alt="image" src="https://github.com/user-attachments/assets/d2abd6c8-cef8-4766-bff0-3e1dc93ac3c7" />
+
+
+
+
 
 
 
