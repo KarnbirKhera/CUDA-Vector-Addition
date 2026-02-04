@@ -154,7 +154,41 @@ This points out a great distinction between theoretical occupancy and the actual
 <img width="407" height="598" alt="image" src="https://github.com/user-attachments/assets/a1fe5f9b-8f91-42e5-8cee-7a5720233b57" /><br>
 The naive kernel has an L1 cache hit rate of 0% which is expected as vector add fundamentally does not reuse data. Although, the L2 cache does have a hit rate of 31.53% which is very unexpected. This is interesting because say in the naive kernel, a single thread requests 4 bytes of data, at a warp level memory call, that is 128 bytes. This fits perfectly into the 128 byte cache line of the RTX 4060, and also perfectly accesses four 32 byte sectors in the DRAM, so at the moment this is a mystery to me.
 
-After looking into why this might be the case, one potential answer lies in why 2:1 ratio, and show tables make l2-full
+After looking into why this might be the case, the following provides some insight to this mysterious 31% L2 cache hit rate. To better understand why this might be the case, I isolated the vector add kernel added a write only variant, and a read only variant with the following results. <br>
+
+<h4>The Orginal Naive</h4>
+<img width="463" height="495" alt="image" src="https://github.com/user-attachments/assets/33f3b2d1-8977-4b21-b5eb-369e0e3febc1" />
+<img width="1239" height="444" alt="image" src="https://github.com/user-attachments/assets/6b4278a0-255c-47f7-ae0d-2574383160c1" />
+<br>
+We can see from the Nsight compute, the L2 cache hit rate is ~31%, which is supported by the detailed L2 report. This percentage is made up of of 54186884 reads (A[i] and B[i]) and 25001191 writes (C[i]).
+
+
+<h4>The Read-only Naive</h4>
+<img width="455" height="508" alt="image" src="https://github.com/user-attachments/assets/1c569573-727e-4e51-bea2-29f6adba7ab4" />
+<img width="1355" height="451" alt="image" src="https://github.com/user-attachments/assets/8f518125-1821-40bc-bf02-2917b3484e1a" />
+<br>
+We can see from the Nsight compute, the L2 cache hit rate is ~0.07%, which is supported by the detailed L2 report.  This percentage is made up of 52477053 reads (A[i] and B[i]) and the 601 writes can be assumed to be some type of write overhead.
+
+<h4>The Write-only Naive</h4>
+<img width="451" height="515" alt="image" src="https://github.com/user-attachments/assets/564b7637-e51f-4ec8-841c-703378b9e2ba" />
+<img width="1316" height="466" alt="image" src="https://github.com/user-attachments/assets/08c194d5-16ee-4731-8704-2f584a1ba4d0" />
+<br>
+We can see fromt he Nsight compute, the L2 cache hit rate is ~96%, which supported by the detailed L2 report. This percentage is made up of 1435086 reads and 25002522 writes (C[i]). The 1435086 reads is very interesting as the code itself has no A[i] and B[i] reads. After further analysis:
+
+<img width="1198" height="131" alt="image" src="https://github.com/user-attachments/assets/ed323b62-970c-4b4c-bdce-82702a979bdf" />
+
+<br>
+From the following SASS screenshot, we can see the the "Load from Constant Memory into a Uniform Register" (ULDC) likely contributes massively to the 1435086 reads we see in our write-only kernel.
+
+
+
+
+
+
+
+
+
+
 
 
 
