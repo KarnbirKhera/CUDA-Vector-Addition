@@ -205,12 +205,17 @@ The grid stride has an Warp Cycles Per Issued Instruction of 423.80 which is a 1
 The grid stride has an Executed Instruction Per Cycle of 0.11, which is a 49.61% decrease than the naive. This is likely directly related to the Warp Cycles Per Issued Instruction, where because each instruction takes more warp cycles, we have a decrease in the instructions we perform per cycle (decreased compute).
 
 <h3>Naive vs Grid Stride Result</h3>
-While the Grid Stride kernel has a near perfect occupancy of 99.96%, the increase in instructional overhead results in less compute per warp cycle, resulting in a slower performance compared to the naive. This is very insightful when it comes to understanding higher occupancy does not always mean a faster kernel.
+While the Grid Stride kernel has a near perfect occupancy of 99.96%, the increase in instructional overhead results in less compute per warp cycle, resulting in a slower performance because of the decreased memory throughput compared to the naive. This is very insightful when it comes to understanding higher occupancy does not always mean a faster kernel, nor higher memory throughput.
 
 
 <h2>Vectorization (float4) </h2>
+<h3>Warp State Statistics</h3>
+The vectorized kernel has a Warp Cycles Per Issued Instruction of 438.23 which is a 142.88% increase from the naive.
+
 <h3>Instruction Statistics</h3>
-The vectorized kernel has an executed instruction count of 50625063
+The vectorized kernel has an executed instruction count of 40625063, which is a 59.37% decrease from the naive. This is because the kernel is able to call for 4 floats at once, resulting in a single memory transaction. In the naive, each thread calls for a single float, if compared to the vectorized kernel, the naive requires four memory transactions for the same result.
+
+<h3>Compute Workload /h3>
 
 
 
