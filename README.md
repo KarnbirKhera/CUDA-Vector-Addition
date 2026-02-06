@@ -188,6 +188,24 @@ For this kernel we have a single 4 byte float write per thread, on a warp scale 
 
 <img width="743" height="384" alt="image" src="https://github.com/user-attachments/assets/d2abd6c8-cef8-4766-bff0-3e1dc93ac3c7" />
 
+<h3>Instruction Per Cycle</h3>
+<img width="1751" height="125" alt="image" src="https://github.com/user-attachments/assets/0481162a-b1d3-47b5-84c4-5d8953a52c5e" />
+The naive kernel has an Executed instruction per cycle of 0.22, and an SM Busy percentage of 5.61%. This confirms the kernel is memory bound, as the SMs spend most of their time idle waiting on data from DRAM rather than performing compute.
+
+
+<h2>Grid Stride</h2>
+<h3>Occupancy</h3>
+<img width="877" height="168" alt="image" src="https://github.com/user-attachments/assets/c1e1b13d-a288-4890-a703-7c412c123a7a" />
+The grid stride kernel has an achieved occupancy of 99.96%, which is 17.67% percent above the naive. The grid stride also has an Achieved Active Warps Per SM of 47.98, which is 17.67% above the naive. The likley increase in both of these metrics is likely because of grid stride's small, but fixed block per grid count. The naive launches 781250 blocks whereas grid stride launches only 144 blocks. While the naive has a significant increase in block count, the kernel still has to abide by the maximum 6 active blocks per SM count of the RTX 4060. This means the grid stride will have higher occupancy because the 144 block count fits perfectly with the 24 SMs at 6 blocks per SM whereas the naive's significant block count results in block overhead, lowering the achieved occupancy.
+
+<h3>Warp State Statistics</h3>
+The grid stride has an Warp Cycles Per Issued Instruction of 423.80 which is a 134.80% increase from the naive. This is expected as the for loop in the grid stride kernel requires fetching the iteration index, a comparison check, and index incrementing for every iteration requiring more warp cycles per instruction.
+
+<h3>Compute Workload Analysis</h3>
+The grid stride has an Executed Instruction Per Cycle of 0.11, which is a 49.61% decrease than the naive. This is likely directly related to the Warp Cycles Per Issued Instruction, where because each instruction takes more warp cycles, we have a decrease in the instructions we perform per cycle (decreased compute).
+
+<h3>Naive vs Grid Stride Result</h3>
+While the Grid Stride kernel has a near perfect occupancy of 99.96%, the increase in instructional overhead results in less compute per warp cycle, resulting in a slower performance compared to the naive. This is very insightful when it comes to understanding higher occupancy does not always mean a faster kernel.
 
 
 
