@@ -208,7 +208,9 @@ The grid stride has an Executed Instruction Per Cycle of 0.11, which is a 49.61%
 While the Grid Stride kernel has a near perfect occupancy of 99.96%, the increase in instructional overhead results in less compute per warp cycle, resulting in a slower performance compared to the naive. This is very insightful when it comes to understanding higher occupancy does not always mean a faster kernel.
 
 
-
+<h2>Vectorization (float4) </h2>
+<h3>Instruction Statistics</h3>
+The vectorized kernel has an executed instruction count of 50625063
 
 
 
