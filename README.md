@@ -186,6 +186,34 @@ From the following SASS panel for the naive kernel we see a "Store to Global Mem
 
 For this kernel we have a single 4 byte float write per thread, on a warp scale this results in a perfect 128 byte write to the 128 byte cache line. This means for every new warp write, there is a very high likelyhood the required four 32 byte sectors in the DRAM are not in the L2 cache. This means every warp write will result in a cache line miss, because of this the kernel is required to do a DRAM read of the four 32 byte sectors in the DRAM before writing. This is supported by following images where the L2 lts__t_sectors_op_read.sum is 1,538,775, and in the Nsight compute kernel we have a total sector misses to device of 1,508,103, this eludes these L2 cache misses result in a signfiicant amount of reads made by the kernel. This GPU behavior of cache miss resulting in a read is supported by the following NVIDIA post https://forums.developer.nvidia.com/t/how-do-gpus-handle-writes/58914/5.
 
+After looking into this even more, I found that this read write policy is very intentional and is actually fundamental to the hardware/software co-design of not just the RTX 4060, but for all modern GPUs. The reason for this read write policy is very interesting because it solves a problem that before this I had never even thought of.
+
+Say our kernel was able to write directly into the DRAM, bypassing the L2 cache. At first I thought this was a great idea, we'd avoid the L2 cache entirely and I assumed it would result in faster performance. The problem with this is the DRAM can only load a single cache line into its buffer at a time. To write to the DRAM, you first have to open the cache line, this means using the DRAM's 2-8kb cache to load the entire row, this is a ~50 nanosecond action, then writing to the row which is often ~20 nanosecond action. At first this may seem trivial, but from the perspective of parallel programming this can prove very in-efficient.
+
+Say we have the following scenario where both SM One and SM Two are writing to the DRAM in parallel.
+
+- SM One: Opens cache line A and it is loaded into the DRAM's single row buffer (50 nanoseconds) and writes a single 16 byte value (20 nanoseconds)
+- SM Two: Opens cache line B and it is loaded into the DRAM's single row buffer (50 nanoseconds) and writes a single 16 byte value (20 nanoseconds)
+- SM One: Has to again open cache line A into the DRAM's single row buffer (50 nanoseconds) and writes a 16 byte value (20 nanoseconds)
+- SM Two: Has to again open cache line B into the DRAM's single row buffer (50 nanoseconds) and writes a 16 byte value (20 nanoseconds)
+
+The in-efficiency lies where the DRAM's single row buffer does not allow the full strength of parallel programming to shine, and this is where the L2 cache comes in. The way the L2 cache works is the following:
+
+- SM One: Writes to L2 cache with a single value, targeted at memory sector A in the DRAM
+- SM Two: Writes to L2 cache with a single value, targeted at memory sector B in the DRAM
+- SM One: Writes to L2 cache with a single value, targeted at memory sector A in the DRAM
+- SM Two: Writes to L2 cache with a single value, targeted at memory sector B in the DRAM
+
+- The L2 cache: Opens a cache line to memory sector A (50 nanoseconds) and batch writes two 16 byte values (~20 nanoseconds)
+- The L2 cache: Opens a cache line to memory sector B (50 nanoseconds) and batch writes two 16 byte values (~20 nanoseconds)
+
+Rather than needing to re-open cache lines, the L2 cache gathers all the needed values to be written for each memory sector, then does a single read followed by a batch write. This allows turns an in-efficient 280 nanosecond operation into an efficient 140 seconds operation.
+
+Now going back to the STG.E which means a read followed by a batch write, if this kernel wasn't vector add which is fundamentally all streaming data, I would use PTX/SASS to hint to the kernel to keep relevant data I need to re-use in the L2 cache as .persisting, and the data I do not need I would use .cs to allow for easy L2 cache eviction
+
+
+Even this wasnst vector which is pure streaming I would use .cs 
+IM very glad th is was a teaching moment as to why the L2 cache is needed
 <img width="743" height="384" alt="image" src="https://github.com/user-attachments/assets/d2abd6c8-cef8-4766-bff0-3e1dc93ac3c7" />
 
 <h3>Instruction Per Cycle</h3>
