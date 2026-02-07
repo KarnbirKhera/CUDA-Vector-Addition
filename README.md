@@ -226,10 +226,13 @@ While the vectorized kernel significantly decreases the instructional overhead b
 The combined Grid Stride and Vectorized kernel reaches an occupancy of 92.09% which is an 8.40% increase from the Naive. The increased occupancy is likely from the fixed block size provided by grid stride which allows 144 blocks to fit perfectly in the 24 SMs @ 6 blocks per SM. It can be noted that the kernel's occupancy actually decreases by 7.87% when compared to grid stride alone.
 
 <h3>Warp State Statistics</h3>
-The combined Grid Stride and Vectorized kernel reaches a Warp Cycle Per Issued Instruction of 1132.06, which is a 527.43% increase than the naive. This is because of the increased instructional overhead of keeping track of the iteration index, iteration index comparison, iteration incrementing and the float4 vectorization per thread.
+The combined Grid Stride and Vectorized kernel reaches a Warp Cycle Per Issued Instruction of 1132.06, which is a 527.43% increase than the naive. This is because of the increased instructional overhead of keeping track of the iteration index, iteration index comparison, iteration incrementing and the float4 vectorization per thread resulting in more warp cycles required for all this extra computation.
 
 <h3>Instructional Statistics</h3>
+The Grid Stride and Vectorized kernel reaches a Executed Instruction count of 17,634,515 a -82.37% decrease from the naive. This significant decrease is likely because of the float4 vectorization, and the significant decrease in thread launches and overhead.
 
+<h3>Throughput</h3>
+The Grid Stride and Vectorized kernel reaches a memory throughput of 246.56 which is a 1.22% decrease from the naive. 
 
 
 
