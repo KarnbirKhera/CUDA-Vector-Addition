@@ -209,6 +209,23 @@ The in-efficiency lies where the DRAM's single row buffer does not allow the ful
 
 Rather than needing to re-open cache lines, the L2 cache gathers all the needed values to be written for each memory sector, then does a single read followed by a batch write. This allows turns an in-efficient 280 nanosecond operation into an efficient 140 seconds operation.
 
+Now going back to the STG.E, it turns out after more research the .E is actually a modifier for the STG command when it comes to the caching policy. The .E represents that this data will follow a normal replacement policy, meaning it is neither elevated to be removed first, or elevated to be kept. This adds an interesting layer of granularity because while we cannot change the fundamental nature of the read write structure, we can although modify the L2 cache policy of the data we send.
+
+Looking at vector add kernel, we know that the entire process itself is purely streamed data, meaning data is loaded once, and never used or needed again. We can actually modify this cache policy with a ".cs" modifier which hints to the PTX to SASS compiler that the data is not needed once used, allowing it to be evicted first, which should in theory in-directly allow for more data to flow through the L2 cache. The reason this would theoretically allow more data to flow is because the default cache policy evicts the oldest or least recently used, but using the ".cs" should save the compiler time and compute as it does not need to find/calculate the oldest cache line.
+
+This is incredibily exciting, the theory checked out! On a benchmark test of 10 trials, with three warm up trials beforehand, the Naive PTX kernel performed better then just the plain naive!
+
+
+
+
+
+
+we cannot change the fundamental nature of the read write structure, but we can modify the L2 caches behavior to better support our kernel. It turns after looking into what STG.E means, the .E of the command is actually a cache policy modifier. The .E specifically means that in the L2 cache, this data can kept in the L2 cache until 
+
+The vector add kernel is inherently by nature a streaming kernel, where all of the data is only used once, and never needed again. This means 
+
+
+-------
 Now going back to the STG.E which means a read followed by a batch write, if this kernel wasn't vector add which is fundamentally all streaming data, I would use PTX/SASS to hint to the kernel to keep relevant data I need to re-use in the L2 cache as .persisting, and the data I do not need I would use .cs to allow for easy L2 cache eviction
 
 
