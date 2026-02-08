@@ -213,7 +213,11 @@ Now going back to the STG.E, it turns out after more research the .E is actually
 
 Looking at vector add kernel, we know that the entire process itself is purely streamed data, meaning data is loaded once, and never used or needed again. We can actually modify this cache policy with a ".cs" modifier which hints to the PTX to SASS compiler that the data is not needed once used, allowing it to be evicted first, which should in theory in-directly allow for more data to flow through the L2 cache. The reason this would theoretically allow more data to flow is because the default cache policy evicts the oldest or least recently used, but using the ".cs" should save the compiler time and compute as it does not need to find/calculate the oldest cache line.
 
-<h3>Naive PTX Cache Streamed</h3>
+<h3>Naive PTX, Cache Streamed</h3>
+| Technique                 | 10M Elements           | 100M Elements          | 200M Elements           |
+|---------------------------|------------------------|------------------------|-------------------------|
+| Naive                     | 0.5561 ms (+/- 0.0428) | 5.6568 ms (+/- 0.1643) | 10.3804 ms (+/- 0.3142) |
+| Naive PTX, Cache Streamed | 0.5225 ms (+/- 0.0274) | 5.6740 ms (+/- 0.0821) | 10.2425 ms (+/- 0.0663) |
 
 
 
