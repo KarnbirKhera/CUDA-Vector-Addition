@@ -217,8 +217,12 @@ However, I would imagine this comes at a cost of having to "tag" or use meta-dat
 
 There is also another cache policy modifier known as .lu (Last Use). This means once the cache line is utilized, the cache line is disposed of even if the L2 cache is not full. This likely has the same n size use case mentioned for .cs (Cached Streaming).
 
-<h4>Results</h4>
-All three kernel types, naive, naive cache streamed and naive last use performed within 1-2% of each other on n sizes 50M, 100M and 200M. One thing to note is the difference in the L2 cache timeline for each of these cache policies.
+
+All three kernel types, naive, naive cache streamed and naive last use performed within 1-2% of each other on n sizes 50M, 100M and 200M. One thing to note is the difference in the PM Sampling timeline for the STG.E (naive) and the STG.E.EF (cached streaming) policies.
+
+STG.E (naive)
+
+STG.E.EF (cached streaming)
 
 
 
