@@ -215,6 +215,7 @@ Looking at vector add kernel, we know that the entire process itself is purely s
 
 <h3>Naive PTX, Cache Streamed</h3>
 <h2>Time Elapsed</h2>
+
 | Technique                 | 10M Elements           | 100M Elements          | 200M Elements           |
 |---------------------------|------------------------|------------------------|-------------------------|
 | Naive                     | 0.5041 ms (+/- 0.0276) | 5.5294 ms (+/- 0.0669) | 10.1736 ms (+/- 0.0598) |
@@ -229,6 +230,12 @@ Looking at vector add kernel, we know that the entire process itself is purely s
 | Grid Stride               | 237.09 (+/- 13.81)     | 218.61 (+/- 2.79)      | 235.75 (+/- 2.17)      |
 
 
+<h2>Efficiency (% of peak bandwidth)</h2>
+
+| Technique                 | 10M Elements           | 100M Elements          | 200M Elements          |
+|---------------------------|------------------------|------------------------|------------------------|
+| Naive                     | 87.77% (+/- 4.69%)     | 79.80% (+/- 0.98%)     | 86.73% (+/- 0.51%)     |
+| Grid Stride               | 87.16% (+/- 5.08%)     | 80.37% (+/- 1.02%)     | 86.67% (+/- 0.80%)     |
 
 
 
