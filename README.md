@@ -230,25 +230,8 @@ The naive STG.E kernel produced a very consistent DRAM and L2 cache throughput. 
 
 The naive cached stream kernel produced a very "bursty" DRAM and L2 cache throughput. This is because when using cached stream policy (STG.E.EF), as soon as a cache line is dirty (data is modified), the cache line is marked to be evicted. This means when a new cache line is needed, the write back queue to the DRAM fills very quickly, faster than the memory controller can drain between reads. Once the DRAM write bandwidth reaches a threshold, the write back queue is drained by batch writing into the DRAM. We can observe this by the peaks followed by the trough pattern in the DRAM Write Bandwidth row. When the write queue is draining to the DRAM, any warp that needs to write or read will likely stall, whereas any warp performing compute will be uneffected. I'd imagine this is very useful for batched computations for things like FlashInfer where the KV cache is calculated by pages/batches (although I have yet to implement any sort of attention, this is a hypothesis).
 
+----------------------------------------------------
 
-
-
-
-
-
-
-
-we cannot change the fundamental nature of the read write structure, but we can modify the L2 caches behavior to better support our kernel. It turns after looking into what STG.E means, the .E of the command is actually a cache policy modifier. The .E specifically means that in the L2 cache, this data can kept in the L2 cache until 
-
-The vector add kernel is inherently by nature a streaming kernel, where all of the data is only used once, and never needed again. This means 
-
-
--------
-Now going back to the STG.E which means a read followed by a batch write, if this kernel wasn't vector add which is fundamentally all streaming data, I would use PTX/SASS to hint to the kernel to keep relevant data I need to re-use in the L2 cache as .persisting, and the data I do not need I would use .cs to allow for easy L2 cache eviction
-
-
-Even this wasnst vector which is pure streaming I would use .cs 
-IM very glad th is was a teaching moment as to why the L2 cache is needed
 <img width="743" height="384" alt="image" src="https://github.com/user-attachments/assets/d2abd6c8-cef8-4766-bff0-3e1dc93ac3c7" />
 
 <h3>Instruction Per Cycle</h3>
