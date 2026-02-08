@@ -211,31 +211,14 @@ Rather than needing to re-open cache lines, the L2 cache gathers all the needed 
 
 Now going back to the STG.E, it turns out after more research the .E is actually a modifier for the STG command when it comes to the caching policy. The .E represents that this data will follow a normal replacement policy, meaning it is neither elevated to be removed first, or elevated to be kept. This adds an interesting layer of granularity because while we cannot change the fundamental nature of the read write structure, we can although modify the L2 cache policy of the data we send.
 
-Looking at vector add kernel, we know that the entire process itself is purely streamed data, meaning data is loaded once, and never used or needed again. We can actually modify this cache policy with a ".cs" modifier which hints to the PTX to SASS compiler that the data is not needed once used, allowing it to be evicted first, which should in theory in-directly allow for more data to flow through the L2 cache. The reason this would theoretically allow more data to flow is because the default cache policy evicts the oldest or least recently used, but using the ".cs" should save the compiler time and compute as it does not need to find/calculate the oldest cache line.
+Looking at vector add kernel, we know that the entire process itself is purely streamed data, meaning data is loaded once, and never used or needed again. We can actually modify this cache policy with a ".cs" modifier which hints to the PTX to SASS compiler that the data is not needed once used, allowing it to be evicted first, which should in theory in-directly allow for more data to flow through the L2 cache. The reason this would theoretically allow more data to flow is because the default cache policy evicts the oldest or least recently used, but using the ".cs" should save the compiler time and compute as it does not need to find/calculate the oldest cache line. 
 
-<h3>Naive PTX, Cache Streamed</h3>
-<h2>Time Elapsed</h2>
+However, I would imagine this comes at a cost of having to "tag" or use meta-data to convey to the compiler that this specific cache line can be evicted first. I would once again imagine, when n is low the cost of adding this "tag" would likely overweigh its need, whereas if we have a large n size, the "tag" overhead becomes minimial.
 
-| Technique                 | 10M Elements           | 100M Elements          | 200M Elements           |
-|---------------------------|------------------------|------------------------|-------------------------|
-| Naive                     | 0.5041 ms (+/- 0.0276) | 5.5294 ms (+/- 0.0669) | 10.1736 ms (+/- 0.0598) |
-| Naive PTX, Cache Streamed | 0.5079 ms (+/- 0.0304) | 5.4901 ms (+/- 0.0687) | 10.1810 ms (+/- 0.0942) |
+There is also another cache policy modifier known as .lu (Last Use). This means once the cache line is utilized, the cache line is disposed of even if the L2 cache is not full. This likely has the same n size use case mentioned for .cs (Cached Streaming).
 
-<br>
-<h2>Throughput (GB/s)</h2>
-
-| Technique                 | 10M Elements           | 100M Elements          | 200M Elements          |
-|---------------------------|------------------------|------------------------|------------------------|
-| Naive                     | 238.74.08 (+/- 12.75)  | 217.06 (+/- 2.67)      |  235.91 (+/- 1.39)     |
-| Grid Stride               | 237.09 (+/- 13.81)     | 218.61 (+/- 2.79)      | 235.75 (+/- 2.17)      |
-
-
-<h2>Efficiency (% of peak bandwidth)</h2>
-
-| Technique                 | 10M Elements           | 100M Elements          | 200M Elements          |
-|---------------------------|------------------------|------------------------|------------------------|
-| Naive                     | 87.77% (+/- 4.69%)     | 79.80% (+/- 0.98%)     | 86.73% (+/- 0.51%)     |
-| Grid Stride               | 87.16% (+/- 5.08%)     | 80.37% (+/- 1.02%)     | 86.67% (+/- 0.80%)     |
+<h4>Results</h4>
+All three kernel types, naive, naive cache streamed and naive last use performed within 1-2% of each other on n sizes 50M, 100M and 200M. One thing to note is the difference in the L2 cache timeline for each of these cache policies.
 
 
 
