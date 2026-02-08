@@ -221,8 +221,14 @@ There is also another cache policy modifier known as .lu (Last Use). This means 
 All three kernel types, naive, naive cache streamed and naive last use performed within 1-2% of each other on n sizes 50M, 100M and 200M. One thing to note is the difference in the PM Sampling timeline for the STG.E (naive) and the STG.E.EF (cached streaming) policies.
 
 STG.E (naive)
+<img width="1673" height="231" alt="image" src="https://github.com/user-attachments/assets/1c0bfa3c-9613-4fd4-b580-781c510e4dc4" />
 
 STG.E.EF (cached streaming)
+<img width="1653" height="222" alt="image" src="https://github.com/user-attachments/assets/c0010cea-f1c1-4ed5-8814-f237ce2d2445" />
+
+The naive STG.E kernel produced a very consistent DRAM and L2 cache throughput. This is because the default caching policy (STG.E) marks cache lines that are either the oldest or least used for eviction when a new cache line is needed. This naturally populates the write back queue to the DRAM slowly, allowing the write back queue to drain as needed between reads, keeping the queue at a steady level.
+
+The naive cached stream kernel produced a very "bursty" DRAM and L2 cache throughput. This is because when using cached stream policy (STG.E.EF), as soon as a cache line is dirty (data is modified), the cache line is marked to be evicted. This means when a new cache line is needed, the write back queue to the DRAM fills very quickly, faster than the memory controller can drain between reads. Once the DRAM write bandwidth reaches a threshold, the write back queue is drained by batch writing into the DRAM. We can observe this by the peaks followed by the trough pattern in the DRAM Write Bandwidth row. When the write queue is draining to the DRAM, any warp that needs to write or read will likely stall, whereas any warp performing compute will be uneffected. I'd imagine this is very useful for batched computations for things like FlashInfer where the KV cache is calculated by pages/batches (although I have yet to implement any sort of attention, this is a hypothesis).
 
 
 
