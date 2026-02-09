@@ -242,6 +242,17 @@ The naive kernel has an Executed instruction per cycle of 0.22, and an SM Busy p
 
 
 <h2>Grid Stride</h2>
+<h4>3.93% slower than the Naive</h4>
+
+<h3>Theory</h3>
+The grid stride performed 3.93% slower than the naive kernel. In a memory bound kernel, the memory throughput is often the determining factor for the duration of the kernel, where in this case we see a -3.15% decrease in memory throughput.
+
+I believe the reasoning behind the decrease in memory throughput is the following factors:
+
+- What the kernel outperforms the naive on (positives):
+  - 
+
+
 <h3>Occupancy</h3>
 <img width="877" height="168" alt="image" src="https://github.com/user-attachments/assets/c1e1b13d-a288-4890-a703-7c412c123a7a" />
 The grid stride kernel has an achieved occupancy of 99.96%, which is 17.67% percent above the naive. The grid stride also has an Achieved Active Warps Per SM of 47.98, which is 17.67% above the naive. The likley increase in both of these metrics is likely because of grid stride's small, but fixed block per grid count. The naive launches 781250 blocks whereas grid stride launches only 144 blocks. While the naive has a significant increase in block count, the kernel still has to abide by the maximum 6 active blocks per SM count of the RTX 4060. This means the grid stride will have higher occupancy because the 144 block count fits perfectly with the 24 SMs at 6 blocks per SM whereas the naive's significant block count results in block overhead, lowering the achieved occupancy.
@@ -278,17 +289,35 @@ While the vectorized kernel significantly decreases the instructional overhead b
 
 
 <h2>Grid Stride + Vectorization</h2>
-<h3>Occupancy</h3>
-The combined Grid Stride and Vectorized kernel reaches an occupancy of 92.09% which is an 8.40% increase from the Naive. The increased occupancy is likely from the fixed block size provided by grid stride which allows 144 blocks to fit perfectly in the 24 SMs @ 6 blocks per SM. It can be noted that the kernel's occupancy actually decreases by 7.87% when compared to grid stride alone.
+<h4>1.19% slower than Naive</h4><br>
 
-<h3>Warp State Statistics</h3>
-The combined Grid Stride and Vectorized kernel reaches a Warp Cycle Per Issued Instruction of 1132.06, which is a 527.43% increase than the naive. This is because of the increased instructional overhead of keeping track of the iteration index, iteration index comparison, iteration incrementing and the float4 vectorization per thread resulting in more warp cycles required for all this extra computation.
+<h3>Theory</h3>
+The Grid Stride + Vectorization kernel performs ~1.19% slower in duration than the naive kernel. Because this is a memory bound kernel, the memory throughput is an important metric to understand why this is the case. The memory throughput of this kernel is -1.32% slower than the naive. I believe this is the case because although grid stride and vectorization allow for the following positives:
 
-<h3>Instructional Statistics</h3>
-The Grid Stride and Vectorized kernel reaches a Executed Instruction count of 17,634,515 a -82.37% decrease from the naive. This significant decrease is likely because of the float4 vectorization, and the significant decrease in thread launches and overhead.
+- **Achieved Occupancy:** 85.36% -> 92.02% (+7.80%)
+  - This means the scheduler is able to fit more active warps per SM, which is useful for latency hiding.
+- **Executed Instructions:** 100,000,000 -> 17,534,515 (-82.37%)
+  - Vectorization allows us to request for four floats with a single memory transaction, rather than four times at once, signficantly reducing # of executed instructions.
+  - Grid Stride allows for a significant reduction in executed instructions but a more implicit and interesting way. When we look at the source counter of the naive kernel, 18.75% of all instructions are executed because of the _int i = blockIdx.x * blockDim.x + threadIdx.x_, this allows to get the threads id relative to the block its in. The interesting thing is for our naive kernel has 200,000,000 threads, which means every single thread executing this. With grid stride though, we are using 144 threads which means a significant reduction in the number of times we need to calculate this, which is supported by the grid stride instructions executed source counter for this line being just 0.02%.
+- **Active Warps Per Scheduler:** 10.12 -> 10.94 (+8.16%)
+  - This increase in Active Warps per Scheduler is likely because  
+ 
+Despite the increased Occupancy and the signficant decrease in Executed Instructions, I believe the reason why this kernel performs slower and has less memory throughput is because each SM does not have enough warps to hide latency, whereas in the naive, there are significantly more warps to switch between when one stalls. The following are the negatives of the kernel that support this theory. 
 
-<h3>Compute Workload Analysis</h3>
-T 
+- **Executed Instructions Per Cycle:** 0.23 -> 0.04 (-82.57%)
+  - This statistic means that per cycle, we are only executing 0.04 instructions. This is likely because 
+
+
+- **Warps Per Issued Instruction Cycle:** 180.16 -> 1115.44 (+519.14%)
+  - This indicates to us that for every instruction executed in our kernel, we are waiting on average an additional 519.14%.
+    - Grid stride likely plays a part in this where the kernel must keep track of the iteration index, compare the iteration index to the n size and increment the iteration index. This creates memory dependency chains increases the number of cycles. This is supported
+    - Vectorization likely plays a part in tis where the kernel must 
+
+
+
+
+
+
 
 
 
