@@ -230,61 +230,62 @@ The naive STG.E kernel produced a very consistent DRAM and L2 cache throughput. 
 
 The naive cached stream kernel produced a very "bursty" DRAM and L2 cache throughput. This is because when using cached stream policy (STG.E.EF), as soon as a cache line is dirty (data is modified), the cache line is marked to be evicted. This means when a new cache line is needed, the write back queue to the DRAM fills very quickly, faster than the memory controller can drain between reads. Once the DRAM write bandwidth reaches a threshold, the write back queue is drained by batch writing into the DRAM. We can observe this by the peaks followed by the trough pattern in the DRAM Write Bandwidth row. When the write queue is draining to the DRAM, any warp that needs to write or read will likely stall, whereas any warp performing compute will be uneffected. I'd imagine this is very useful for batched computations for things like FlashInfer where the KV cache is calculated by pages/batches (although I have yet to implement any sort of attention, this is a hypothesis).
 
-----------------------------------------------------
 
-<img width="743" height="384" alt="image" src="https://github.com/user-attachments/assets/d2abd6c8-cef8-4766-bff0-3e1dc93ac3c7" />
+<br><br><br>
 
-<h3>Instruction Per Cycle</h3>
-<img width="1751" height="125" alt="image" src="https://github.com/user-attachments/assets/0481162a-b1d3-47b5-84c4-5d8953a52c5e" />
-The naive kernel has an Executed instruction per cycle of 0.22, and an SM Busy percentage of 5.61%. This confirms the kernel is memory bound, as the SMs spend most of their time idle waiting on data from DRAM rather than performing compute.
+<h2>Grid Stride + Vectorized vs Naive</h2>
 
+**Performance Result:** 1.19% slower than Naive
+**Memory Throughput:** 1.32% slower than Naive
 
+---
 
+<h3>What Improved</h3>
 
-<h2>Grid Stride</h2>
-<h4>3.93% slower than the Naive</h4>
-
-<h3>Theory</h3>
-The grid stride performed 3.93% slower than the naive kernel. In a memory bound kernel, the memory throughput is often the determining factor for the duration of the kernel, where in this case we see a -3.15% decrease in memory throughput.
-
-I believe the reasoning behind the decrease in memory throughput is the following factors:
-
-- What the kernel outperforms the naive on (positives):
-  - 
+1. Significiant Instruction Reduction (-82.37%): 100M -> 17.5M
+   - Why this happened:
+     - Vectorization: Requests 4 floats with a single memory transaction, rather than four seperate memory transactions like in this naive, reducing the number of instructions.
+     - Grid Stride: Grid Stride allows for a significant reduction in executed instructions but a more implicit and interesting way. When we look at the source counter of the naive kernel, 18.75% of all instructions are executed because of the _int i = blockIdx.x * blockDim.x + threadIdx.x_, this allows to get the threads id relative to the block its in. The interesting thing is for our naive kernel has 200,000,000 threads, which means every single thread executing this. With grid stride though, we are using 144 threads which means a significant reduction in the number of times we need to calculate this, which is supported by the grid stride instructions executed source counter for this line being just 0.02%.
 
 
-<h3>Occupancy</h3>
-<img width="877" height="168" alt="image" src="https://github.com/user-attachments/assets/c1e1b13d-a288-4890-a703-7c412c123a7a" />
-The grid stride kernel has an achieved occupancy of 99.96%, which is 17.67% percent above the naive. The grid stride also has an Achieved Active Warps Per SM of 47.98, which is 17.67% above the naive. The likley increase in both of these metrics is likely because of grid stride's small, but fixed block per grid count. The naive launches 781250 blocks whereas grid stride launches only 144 blocks. While the naive has a significant increase in block count, the kernel still has to abide by the maximum 6 active blocks per SM count of the RTX 4060. This means the grid stride will have higher occupancy because the 144 block count fits perfectly with the 24 SMs at 6 blocks per SM whereas the naive's significant block count results in block overhead, lowering the achieved occupancy.
+2. Higher Occupancy (+7.80%): 85.36% -> 92.02%
+   - Why this happened:
+     - Grid Stride: The fixed block configuration of grid stride allowed for the number of blocks to perfectly fit the 24 SMs which each holds 6 blocks each for a total of 144 blocks, increasing occupancy.
+    
+3. More Active Warps per Scheduler (+8.16%): 10.12 -> 10.94
+   - Why this happened:
+     - This is directly related to occupancy, where a higher occupancy often means each scheduler within the SM has access to more warps.
 
-<h3>Warp State Statistics</h3>
-The grid stride has an Warp Cycles Per Issued Instruction of 423.80 which is a 134.80% increase from the naive. This is expected as the for loop in the grid stride kernel requires fetching the iteration index, a comparison check, and index incrementing for every iteration requiring more warp cycles per instruction.
+<h3>Why It's Still Slower</h3>
 
-<h3>Compute Workload Analysis</h3>
-The grid stride has an Executed Instruction Per Cycle of 0.11, which is a 49.61% decrease than the naive. This is likely directly related to the Warp Cycles Per Issued Instruction, where because each instruction takes more warp cycles, we have a decrease in the instructions we perform per cycle (decreased compute).
-
-<h3>Naive vs Grid Stride Result</h3>
-While the Grid Stride kernel has a near perfect occupancy of 99.96%, the increase in instructional overhead results in less compute per warp cycle, resulting in a slower performance because of the decreased memory throughput compared to the naive. This is very insightful when it comes to understanding higher occupancy does not always mean a faster kernel, nor higher memory throughput.
+1. Less Instructions per cycle (-82.57%): 0.23 -> 0.04 instructions/cycle
+  - Why this happened:
+    - 
 
 
 
 
 
-<h2>Vectorization (float4) </h2>
-<h3>Warp State Statistics</h3>
-The vectorized kernel has a Warp Cycles Per Issued Instruction of 438.23 which is a 142.88% increase from the naive.
 
-<h3>Instruction Statistics</h3>
-The vectorized kernel has an executed instruction count of 40625063, which is a 59.37% decrease from the naive. This is because the kernel is able to call for 4 floats at once, resulting in a single memory transaction. In the naive, each thread calls for a single float, if compared to the vectorized kernel, the naive requires four memory transactions for the same result.
 
-<h3>Compute Workload Analysis</h3>
-The vectorized kernel has an Executed Instructions Per Cycle count of 0.09, which is 59.26% lower than the naive. Despite its lower Executed Instructions Per Cycle count, the vectorized kernel remains at the same throughput as the naive.
+##Test
 
-<h3>Vectorization vs Naive</h3>
-While the vectorized kernel significantly decreases the instructional overhead by 59.37%, the kernel performs similar to the naive. This is likely because the in the naive, the memory throughput is already ~87% of peak, suggesting the kernel is memory bound, which decreasing the instructional overhead does not address.
+###Test
+
+####Test
 
 
 
+
+
+
+
+
+
+
+
+
+<br><br><br><br><br><br><br><br><br><br>
 
 
 
