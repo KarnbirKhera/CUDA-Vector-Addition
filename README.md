@@ -229,6 +229,26 @@ STG.E.EF (cached streaming)
 The naive STG.E kernel produced a very consistent DRAM and L2 cache throughput. This is because the default caching policy (STG.E) marks cache lines that are either the oldest or least used for eviction when a new cache line is needed. This naturally populates the write back queue to the DRAM slowly, allowing the write back queue to drain as needed between reads, keeping the queue at a steady level.
 
 The naive cached stream kernel produced a very "bursty" DRAM and L2 cache throughput. This is because when using cached stream policy (STG.E.EF), as soon as a cache line is dirty (data is modified), the cache line is marked to be evicted. This means when a new cache line is needed, the write back queue to the DRAM fills very quickly, faster than the memory controller can drain between reads. Once the DRAM write bandwidth reaches a threshold, the write back queue is drained by batch writing into the DRAM. We can observe this by the peaks followed by the trough pattern in the DRAM Write Bandwidth row. When the write queue is draining to the DRAM, any warp that needs to write or read will likely stall, whereas any warp performing compute will be uneffected. I'd imagine this is very useful for batched computations for things like FlashInfer where the KV cache is calculated by pages/batches (although I have yet to implement any sort of attention, this is a hypothesis).
+<br><br><br>
+
+
+<h2>Grid Stride vs Naive</h2>
+**Performance Result: 3.07% slower than the Naive** <br>
+**Memory Throughput: 2.73% less than the Naive**
+
+---
+
+<h3>What Improved</h3>
+
+
+
+
+
+
+
+
+
+
 
 
 <br><br><br>
@@ -236,7 +256,7 @@ The naive cached stream kernel produced a very "bursty" DRAM and L2 cache throug
 <h2>Grid Stride + Vectorized vs Naive</h2>
 
 **Performance Result:** 1.19% slower than Naive <br>
-**Memory Throughput:** 1.32% slower than Naive
+**Memory Throughput:** 1.32% less than Naive
 
 ---
 
