@@ -260,32 +260,20 @@ The naive cached stream kernel produced a very "bursty" DRAM and L2 cache throug
 
 1. Increased Warp Cycles Per Instruction (+519.14): 180.16 -> 1115.44 cycles
    - Why this happened:
-     - Grid Stride: Kernel must keep track of the iteration index, compare the iteration index to the n size and increment the iteration index. This creates instruction dependency chains where one must be done before the other. This instruction dependency likely contributes to the increased warp cycles required on average per instruction
+     - Grid Stride: Kernel must keep track of the iteration index, compare the iteration index to the n size and increment the iteration index. This creates instruction dependency chains where one must be done before the other. This instruction dependency likely contributes to the increased warp cycles required on average per instruction.
      - Vectorization: There is a minimal difference in terms of stall time when calling a single float versus a float4 because on a warp scale both are coalesced to the 32 byte sectors of the DRAM. After looking into the SASS, the increase in instructions was from:
        - _int n4 = n / 4:_ This is used to calculate the number of elements that are divisible and can be operated using float 4, and was responsible for 23.08% of all instructions executed
        - _Tail Handling:_ The tail handling was responsible for 7.69% of all instructions executed
-       - **Note:** I believe in most vectorized kernels, the data is padded by the host before being sent to the device, which would circumvent this problem completely. For the sake of learning why this is done in the first place, padding was not used.
+       - **Note:** I believe in most vectorized kernels, the data is often padded by the host before being sent to the device, which would circumvent this problem completely. For the sake of learning why this is done in the first place, padding was not used.
    
 2. Reduction in Eligible Warps (-76.20%): 0.06 -> 0.02 warps
    - Why this happened:
-     - Grid Stride: The use of grid stride effectively reduced the number of blocks from the naive's 781,250 to 144. While this 144 count allowed for better occupancy, this does not give the SM enough warps to switch to when one stalls.
-     - Vectorization: Of the 144 blocks, each warp within those blocks 
-
-
-
-
-
-
-
-##Test
-
-###Test
-
-####Test
-
-
-
-
+     - Grid Stride: The use of grid stride effectively reduced the number of blocks from the naive's 781,250 to 144. While this 144 count allowed for better occupancy, this does not give the SM enough warps to switch to when one warp stalls for latency hiding. Latency hiding is important especially for memory bound kernels as it allows the scheduler to switch to different warps when the current one is stalled, this allows each SM to always be busy rather than stalling waiting on memory.
+     - Vectorization: The reason why vectorization plays a role in reducing the elgible warps is because of the required tail handling for when the data is not divisible by 4. This tail handling makes each warp to stall for longer, which means the scheduler will have even less warps to switch to as every warp will stall for a longer duration.
+     - **Note** When I was first trying to understand why vectorization may cause an increased number of stalls, I thought it may have been because we we're calling for four floats per thread, rather than just one in the naive. After looking more into it and updating my mental model of vectorization I came to the following conclusion. While it is true we are increasing the bandwidth saturation and the required computation per thread, the actual speed at which the thread recieves the four floats is very similar to the naive. This is because every thread deals with 4 floats, totaling to 16 bytes and on a warp scale, which is where instructions are executed, this results in a call for 512 bytes of data. This perfectly coalesces with the 32 byte sectors of the DRAM. When we compare the naive kernel that requests for 128 bytes per cycle with the vectorized kernels which requests for 512 bytes, we can say that the vectorized kernel is four times more efficient when it comes to memory instructions!
+     -
+     -
+     - This is specifically true because our 4 floats totals to 16 bytes, which perfectly coalesces with the 32 byte size of the DRAM sectors when looked at a warp scale (32 threads). The naive coalesces to a perfect 128 bytes (4 sectors) but the vectorized version coalesces to a perfect 512 bytes (16 sectors) for just a fourth of the instruction commands as the naive!
 
 
 
@@ -295,35 +283,6 @@ The naive cached stream kernel produced a very "bursty" DRAM and L2 cache throug
 
 
 <br><br><br><br><br><br><br><br><br><br>
-
-
-
-<h2>Grid Stride + Vectorization</h2>
-<h4>1.19% slower than Naive</h4><br>
-
-<h3>Theory</h3>
-The Grid Stride + Vectorization kernel performs ~1.19% slower in duration than the naive kernel. Because this is a memory bound kernel, the memory throughput is an important metric to understand why this is the case. The memory throughput of this kernel is -1.32% slower than the naive. I believe this is the case because although grid stride and vectorization allow for the following positives:
-
-- **Achieved Occupancy:** 85.36% -> 92.02% (+7.80%)
-  - This means the scheduler is able to fit more active warps per SM, which is useful for latency hiding.
-- **Executed Instructions:** 100,000,000 -> 17,534,515 (-82.37%)
-  - Vectorization allows us to request for four floats with a single memory transaction, rather than four times at once, signficantly reducing # of executed instructions.
-  - Grid Stride allows for a significant reduction in executed instructions but a more implicit and interesting way. When we look at the source counter of the naive kernel, 18.75% of all instructions are executed because of the _int i = blockIdx.x * blockDim.x + threadIdx.x_, this allows to get the threads id relative to the block its in. The interesting thing is for our naive kernel has 200,000,000 threads, which means every single thread executing this. With grid stride though, we are using 144 threads which means a significant reduction in the number of times we need to calculate this, which is supported by the grid stride instructions executed source counter for this line being just 0.02%.
-- **Active Warps Per Scheduler:** 10.12 -> 10.94 (+8.16%)
-  - This increase in Active Warps per Scheduler is likely because  
- 
-Despite the increased Occupancy and the signficant decrease in Executed Instructions, I believe the reason why this kernel performs slower and has less memory throughput is because each SM does not have enough warps to hide latency, whereas in the naive, there are significantly more warps to switch between when one stalls. The following are the negatives of the kernel that support this theory. 
-
-- **Executed Instructions Per Cycle:** 0.23 -> 0.04 (-82.57%)
-  - This statistic means that per cycle, we are only executing 0.04 instructions. This is likely because 
-
-
-- **Warps Per Issued Instruction Cycle:** 180.16 -> 1115.44 (+519.14%)
-  - This indicates to us that for every instruction executed in our kernel, we are waiting on average an additional 519.14%.
-    - Grid stride likely plays a part in this where the kernel must keep track of the iteration index, compare the iteration index to the n size and increment the iteration index. This creates memory dependency chains increases the number of cycles. This is supported
-    - Vectorization likely plays a part in tis where the kernel must 
-
-
 
 
 
