@@ -317,6 +317,8 @@ Despite vectorization reducing the amount of instructions required to recieve da
 
 Vectorization actually decreases parallelism in this case, not because of the technique itself, but rather because to ensure all elements are computed and nothing more or less is done, we must launch n/4 threads. This means less threads, resulting in less warps, resulting in less blocks which means less blocks for the SM to switch to during stalls.
 
+But honestly while the logic checks out to me, the performance of vectorization versus the naive is so similar, one could conclude that both kernels perform at the same level.
+
 
 
 
@@ -391,11 +393,11 @@ The Grid Stride + Vectorized kernel is effectively slower than the naive because
 
 ---
 
-<h3>What Improved</h3>
+<h3>Current Theory</h3>
 
-1A. Executed Instruction per Cycle (-16.89%) 0.22 -> 0.19
+1A. Executed Instruction per Cycle (-16.89%) 0.22 -> 0.19<br>
 1B. Eligible Warps per Scheduler (+0.17%) 0.06 -> 0.07
-   - Why this happened:
+   - What this means:
      - With my current mental model, these two statistics point out as interesting to me, and I think at the moment they may show something positive despite a reduced IPC often meaning the kernel is less performative. To start from the beginning, vector add is a memory bound kernel, this means to squeeze out more performance from my current understanding we have the following avenues to pursue
        - Increase parallelism to increase latency hiding by increasing the number of eligible warps per scheduler
        - Reduce memory dependencies to decrease long scoreboard stalls
@@ -406,9 +408,53 @@ The Grid Stride + Vectorized kernel is effectively slower than the naive because
        - A decrease in IPC by -16.89%
          - Now usually a decrease in IPC indicates that we are executing less instructions per cycle meaning we are doing less work per cycle. The thing that was interesting to me though was compared to every other variant of vector add which often lost 50-60% of IPC, the ILP kernel only lost 16.89%. This tells me while the other kernels suffered a loss in IPC because of the technique itself (e.g. grid stride or vectorized), ILP may be suffering not from the technique itself but because we are launching only a fourth of the number of blocks as the naive. This is important because the more blocks we have the more parallelism we can achieve, at least until of course we get diminishing returns and the overhead of adding blocks becomes significant.
        - A increase in Eligible Warps per Scheduler by +0.17%
-         - Now this is the statistic that makes me think my theory might be true. Every other kernel variant had more occupancy than the naive, but suffered signfiicantly when it came to the number of eligible warps it had, but ILP is the opposite. This makes me think again the limiting factor for this kernel is not the technique itself, but rather the schedulers limited number of blocks to switch to compared to the naive. 
+         - Now this is the statistic that makes me think my theory might be true. Every other kernel variant had more occupancy than the naive, but suffered signfiicantly when it came to the number of eligible warps it had, but ILP is the opposite. This makes me think again the limiting factor for this kernel is not the technique itself, but rather the schedulers limited number of blocks to switch to compared to the naive. <br>
+       - This makes me think that if ILP were to have the same number of blocks as the naive, it may perform better than naive as both will have the same level of warp parallelism.
 
 
+<h3>Testing the Theory</h3>
+ To test this theory, I will be comparing Naive + Grid Stride and ILP=2 + Grid Stride.
+ 
+   - I will be using Grid Stride so that both kernels have the same number of fixed blocks, and not based off of how many elements are processed per thread.
+   - I will be using ILP=2 instead of ILP=4 because upon profiling ILP=4, the kernel is faced with LG stalls due to the memory bandwidth not being able to keep up with the number of instructions per thread.<br><br><br><br>
+
+
+
+
+     
+<h2>Results of ILP=2 + Grid Stride vs Naive + Grid Stride Theory</h2>
+
+**Performance Result:** 0.16% slower than Naive + Grid Stride<br>
+**Memory Throughput:** 0.12% less than Naive + Grid Stride<br>
+
+
+---
+What this tells me is the following:
+  - Despite the difference betweenn both kernels being the ILP unrolls the loop once, both kernels perform at very similar speeds, throughput and eligible warps where the difference in SM frequency will likely play the most crucial factor in which kernel is faster. This tells me that while my theory was incorrect as ILP did not speed up the kernel beyond what I could consider a negligible/noise difference.
+  - The specific part of my theory that failed was the assumption that ILP could combat the memory bound nature of vector add by increasing parallelism at the instruction level. To update my mental model based off this experiment I would say while we may increase the instruction level parallelism of the kernel, if a warp is stalled and the SM is unable to switch another warp that is not, the kernel still faces the exact same problem as the naive even if we allow parallelism at the instruction level. <br><br><br><br>
+
+
+
+
+  <h2>Comparing Naive + Grid Stride vs Naive + Grid Stride + Vectorized</h2>
+  After doing the experiment prior to this, I realized that if we change the focus of our experiment from comparing all the kernels to the naive, but rather to the Naive + Grid Stride, we get an interesting result.
+
+  **Performance Result:** 0.16% faster than Naive + Grid Stride <br>
+  **Memory Throughput:** 1.70% more than Naive + Grid Stride<br>
+
+
+<h3>Why this Happened</h3>
+- Now this is very interesting because at this particular moment, I am very unclear on why this kernel performs better than the Naive + Grid Stride because it breaks the mental model I've had thus far, so I will list the differences I see.
+
+  - Significant Decrease in Eligible Warps Per Scheduler (-49.65%): 0.03 -> 0.01
+  - Significant Decrease in Executed IPC Active (-65.29%): 0.11 -> 0.04
+  - Decrease in Achieved Occupancy (-7.92%): 99.70% -> 91.81%
+  - Increase in Register Count (+23.08%): 26 -> 32
+  - Significant Increase in Warp Cycles Per Issued Instruction (+166.21%): 428.91 - > 1141.83
+
+- The question is, when the naive kernel and the naive + vectorized kernel are compared they perform very similar to one another where SM frequency plays the differenting role. When it comes to Naive + Grid Stride vs Naive + Grid Stride + Vectorization, the vectorization kernel consistently performs better. This makes me think when vectorization is also in the presence of the grid stride technique, we have some sort of compounding attribute that helps the kernel where each alone does not.
+
+- 
 
 
 
