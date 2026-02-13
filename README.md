@@ -468,8 +468,14 @@ What this tells me is the following:
 > The question is, when the naive kernel and the naive + vectorized kernel are compared they perform very similar to one another where SM frequency plays the differenting role. When it comes to Naive + Grid Stride vs Naive + Grid Stride + Vectorization, the vectorization kernel consistently performs better. This makes me think when vectorization is also in the presence of the grid stride technique, we have some sort of compounding attribute that helps the kernel where each alone does not. <br><br><br><br>
 
 
-<h3>The Reason Why Vectorization performs better when paired with Grid Stride</h3>
+<h3>Mental Model Understanding</h3>
 
+- The first gap in my mental model wasn't because of how the software interacts with the hardware but rather ann assumption I had made in a prior experiment. When comparing the Naive vs Vectorization kernels, I had assumed that vectorization performed worse than the naive, when in fact it did not. The vectorized kernel actually performed at the same level as the naive, where the only differentiatior was likely the SM clock frequency between each runs. While I maintained a 1.86 GHz SM frequency for all trials, one could assume that there is some precision un-accounted for beyond the 1.86 value. 
+
+> One other thing to note is the tail handling used by the vectorized kernel. Even though the vectorized kernel requires tail handling which increases register pressure due to the increased instructional commands, as well as warp divergence for the last warp, the kernel still performed at the same level as the naive consistently. This tells me to truly compare both the Naive vs Vectorized and to maintain a correct mental model of these techniques, we must assume the data is padded by the host to truly let Vectorization shine. Upon testing Naive vs Vectorized vs Vectorized-No-Tail-Handling, all three kernels perform within the same range where SM frequency and noise play a strong influencing factor.
+
+
+- 
 
 
 
