@@ -465,7 +465,11 @@ What this tells me is the following:
       
 - But this experiment breaks the foundation of my mental model when it comes to memory bound kernels, which is the only type of kernel I've been exposed to thus far.
 
-> The question is, when the naive kernel and the naive + vectorized kernel are compared they perform very similar to one another where SM frequency plays the differenting role. When it comes to Naive + Grid Stride vs Naive + Grid Stride + Vectorization, the vectorization kernel consistently performs better. This makes me think when vectorization is also in the presence of the grid stride technique, we have some sort of compounding attribute that helps the kernel where each alone does not.
+> The question is, when the naive kernel and the naive + vectorized kernel are compared they perform very similar to one another where SM frequency plays the differenting role. When it comes to Naive + Grid Stride vs Naive + Grid Stride + Vectorization, the vectorization kernel consistently performs better. This makes me think when vectorization is also in the presence of the grid stride technique, we have some sort of compounding attribute that helps the kernel where each alone does not. <br><br><br><br>
+
+
+<h3>The Reason Why Vectorization performs better when paired with Grid Stride</h3>
+
 
 
 
