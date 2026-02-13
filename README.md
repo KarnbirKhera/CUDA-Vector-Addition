@@ -444,6 +444,7 @@ What this tells me is the following:
 
 
 <h3>Why this Happened</h3>
+
 - Now this is very interesting because at this particular moment, I am very unclear on why this kernel performs better than the Naive + Grid Stride because it breaks the mental model I've had thus far, so I will list the differences I see.
 
   - Significant Decrease in Eligible Warps Per Scheduler (-49.65%): 0.03 -> 0.01
@@ -452,9 +453,21 @@ What this tells me is the following:
   - Increase in Register Count (+23.08%): 26 -> 32
   - Significant Increase in Warp Cycles Per Issued Instruction (+166.21%): 428.91 - > 1141.83
 
-- The question is, when the naive kernel and the naive + vectorized kernel are compared they perform very similar to one another where SM frequency plays the differenting role. When it comes to Naive + Grid Stride vs Naive + Grid Stride + Vectorization, the vectorization kernel consistently performs better. This makes me think when vectorization is also in the presence of the grid stride technique, we have some sort of compounding attribute that helps the kernel where each alone does not.
+- In past experiments I assumed:
+  
+  - Decreasing Eligible Warps Per Scheduler would decrease memory throughput/increase the duration
+  
+    - I assumed this because if the scheduler had more warps to switch to when the current one stalls, this would allow for more latency hiding.
+      
+  - Decreasing Executed IPC Active would decrease memory throughput/increase the duration
+    
+    - I assumed this because the less work we are doing per cycle, the less memory throughput we have.
+      
+- But this experiment breaks the foundation of my mental model when it comes to memory bound kernels, which is the only type of kernel I've been exposed to thus far.
 
-- 
+> The question is, when the naive kernel and the naive + vectorized kernel are compared they perform very similar to one another where SM frequency plays the differenting role. When it comes to Naive + Grid Stride vs Naive + Grid Stride + Vectorization, the vectorization kernel consistently performs better. This makes me think when vectorization is also in the presence of the grid stride technique, we have some sort of compounding attribute that helps the kernel where each alone does not.
+
+
 
 
 
