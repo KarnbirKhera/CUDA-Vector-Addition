@@ -379,7 +379,28 @@ The Grid Stride + Vectorized kernel is effectively slower than the naive because
 
 
 
-<br><br><br><br><br><br><br><br><br><br>
+<br><br><br>
+
+
+
+<h2>ILP=4 vs Naive</h2>
+
+**Performance Result:** 0.36% slower than Naive <br>
+**Memory Throughput:** 0.35% less than Naive<br>
+
+
+---
+
+<h3>What Improved</h3>
+
+1A. Executed Instruction per Cycle (-16.89%) 0.22 -> 0.19
+1B. Eligible Warps per Scheduler (+0.17%) 0.06 -> 0.07
+   - Why this happened:
+     - Now this is definetly interesting I am putting as a positive because with my current mental model it tells me this story. To start from the beginning, vector add is a memory bound kernel, this means to squeeze out more performance from my current understanding we have the following avenues to pursue
+       - Increase parallelism to increase latency hiding by increasing the number of eligible warps per scheduler
+       - Reduce memory dependencies to decrease long scoreboard stalls
+       - Reduce computation dependency to either reduce long scoreboard stalls, or allow for more active occupancy by reducing register count if that is the limitng factor
+     - The Executed Instruction Per Cycle decrease tells me that this kernel performed worse, but not as much as a I expected. For an example, the vector kernel  
 
 
 
