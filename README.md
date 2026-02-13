@@ -232,46 +232,83 @@ The naive cached stream kernel produced a very "bursty" DRAM and L2 cache throug
 <br><br><br>
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 <h2>Grid Stride vs Naive</h2>
-**Performance Result: 3.07% slower than the Naive** <br>
-**Memory Throughput: 2.73% less than the Naive**
+
+**Performance Result:** 3.07% slower than the Naive <br>
+**Memory Throughput:** 2.73% less than the Naive
 
 ---
 
 <h3>What Improved</h3>
 1. Higher Occupancy (+15.66%): 85.61% -> 99.02%
+
   - Why this happened:
     - The naive kernel uses 781,250 blocks at 256 threads each to process all 2,000,000 elements. This means there is likely some overhead due to the number of blocks we launch that prevents each SM from fully occupying the maxmimum 6 active blocks per SM, which is mentioned in the Achieved Occupancy section under the Nsight Compute Analysis for the Naive kernel. In the grid stride kernel however, we launch 144 blocks which one reduces this block overhead faced in the naive kernel, but also perfectly fits in the 24 SMs which fit 6 active blocks each.
 
 <h3>Why It's Still Slower</h3>
 1. Significant Decrease in Eligible Warps Per Scheduler [warp] (-52.67%): 0.06 -> 0.03
+
   - Why this happened:
     - This is a direct cause of the decreased number of blocks from the naive. While we increase occupancy to 99.02%, we effectively remove the kernels ability to latency hide using other warps. Where say a warp stalls on a memory request, in the naive kernel the scheduler is able to switch to another warp to continue actively working, but in the grid stride kernel there is simply not enough warps that are not stalled to switch to.
 
 <br>
 <h3>Why Grid Stride + Vectorized is Slower than the Naive</h3>
 The grid stride kernel performs slower than the naive because while it improves occupancy, it significantly decreases the kernels ability to latency hide with other warps. When it comes to memory bound kernel, being able to latency hide is often a great approach to allow the SM to switch to other warps while the current is waiting for data to arrive.
-
-
 <br><br><br>
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 <h2>Vectorized (float4) vs Naive</h2>
-**Performance Result: 0.46% slower than the Naive **<br>
-**Memory Throughput: 0.05% less than the Naive**
+
+**Performance Result:** 0.46% slower than the Naive<br>
+**Memory Throughput:** 0.05% less than the Naive<br>
 
 ---
 
 <h3>What Improved</h3>
 1. Significant Decrease in Executed Instructions (-59.37%): 200,000,000 -> 40,625,063
-  - This is the direct reason why when it comes to reducing instructions, why vectorization is such a great tool. Rather than a single thread requesting a single float, we request for 4 floats at once using a single memory request. At first when I learned about vectorization it seemed very inadvertent because while we request 4 floats with a single memory request, doesn't that mean we need to move 4x the amount of data therefore, likely take four times the amount of time? It turns out it actually takes nearly the exact amount of time, and the reason it does is actually very exciting and goes to the core of the GPU architecture.
+
+  -This is the direct reason why when it comes to reducing instructions, why vectorization is such a great tool. Rather than a single thread requesting a single float, we request for 4 floats at once using a single memory request. At first when I learned about vectorization it seemed very inadvertent because while we request 4 floats with a single memory request, doesn't that mean we need to move 4x the amount of data therefore, likely take four times the amount of time? It turns out it actually takes nearly the exact amount of time, and the reason it does is actually very exciting and goes to the core of the GPU architecture.
 
   The reason why recieving 4 floats at once is very similar to the amount of time it takes to recieve a single float is because of the way the DRAM's architecture is setup. When we request a single 4 byte float, we are essentially eating the cost of reading the DRAM sector for just a 1/4th of the data it holds, although note in reality instructional commands are executed at the warp level so we would actually use all 32 bytes in said sector. When we use vectorization, we still eat the same cost of reading the DRAM sector, but we are using 16 bytes out of the 32 bytes that sector holds so we are essentially getting more data per read, and again at a warp level we are actually using all of the data contained within this DRAM sector.
 
   While understanding this, I thought why dont we use float8 instead? Because wouldn't 8 floats mean the thread would perfectly request 32 bytes of data, which perfectly fits the 32 byte DRAM sector using just a single memory request? The reasonining why this wouldn't be as efficient is again leads us back to the GPU architecture, specifically to the size of the 128 bit memory bus from the L1 cache to the registers. If we were to use float8, that would mean each thread requires 8 (floats) * 4 (size of float) = 32 bytes, which converted to bits is 256 bits. This means for every thread, we would would need a very costly two read operations which is very in-efficient compared to float4 where we request 4 (floats) * 4 (size of float) = 32 bytes which is 128 bits, which only requires a single read transaction as it fits perfecetly within the L1 to register memory bus. This means the reason why float4 works so great is because we're balancing a fine line where we make sure to utilize all the data we can from a single DRAM read, while also making sure not to tip over into needing two costly DRAM reads.
 
 <h3>Why it's slower</h3>
-1. Signfiicant Decrease in Eligible Warps Per Scheduler [warp] (-56.40%): 0.06 -> 0.03
+1. Signfiicant Decrease in Eligible Warps Per Scheduler [warp] (-56.40%): 0.06 -> 0.03<br>
+
   - Despite vectorization reducing the amount of instructions required to recieve data, it does not tackle the core problem of the vector add kernel. Vector add is inherinently memory bound, and from my current understanding the way we can improve a memory bound kernel is by either increasing parallelism through more warps, decreasing memory dependency chains which is not possible with vector add due to its simplicity and I would also assume decreasing computational complexity, which is also not possible due to the same reason. Vectorization actually decreases parallelism in this case, not because of the technique itself, but rather because to ensure all elements are computed and nothing more or less is done, we must launch n/4 threads. This means less threads, resulting in less warps, resulting in less blocks which means less blocks for the SM to switch to during stalls.
+
+
+
+
+
 
 
 
@@ -285,19 +322,19 @@ The grid stride kernel performs slower than the naive because while it improves 
 <h2>Grid Stride + Vectorized vs Naive</h2>
 
 **Performance Result:** 1.19% slower than Naive <br>
-**Memory Throughput:** 1.32% less than Naive
+**Memory Throughput:** 1.32% less than Naive<br>
 
 ---
 
 <h3>What Improved</h3>
 
-1. Significant Instruction Reduction (-82.37%): 100M -> 17.5M
+1. Significant Instruction Reduction (-82.37%): 100M -> 17.5M<br>
    - Why this happened:
      - Vectorization: Requests 4 floats with a single memory transaction, rather than four seperate memory transactions like in this naive, reducing the number of instructions.
      - Grid Stride: Grid Stride allows for a significant reduction in executed instructions but a more implicit and interesting way. When we look at the source counter of the naive kernel, 18.75% of all instructions are executed because of the _int i = blockIdx.x * blockDim.x + threadIdx.x_, this allows to get the threads id relative to the block its in. The interesting thing is for our naive kernel has 200,000,000 threads, which means every single thread executing this. With grid stride though, we are using 144 threads which means a significant reduction in the number of times we need to calculate this, which is supported by the grid stride instructions executed source counter for this line being just 0.02%.
 
 
-2. Higher Occupancy (+7.80%): 85.36% -> 92.02%
+2. Higher Occupancy (+7.80%): 85.36% -> 92.02%<br>
    - Why this happened:
      - Grid Stride: The fixed block configuration of grid stride allowed for the number of blocks to perfectly fit the 24 SMs which each holds 6 blocks each for a total of 144 blocks, increasing occupancy.
     
@@ -318,11 +355,8 @@ The grid stride kernel performs slower than the naive because while it improves 
 2. Reduction in Eligible Warps (-76.20%): 0.06 -> 0.02 warps
    - Why this happened:
      - Grid Stride: The use of grid stride effectively reduced the number of blocks from the naive's 781,250 to 144. While this 144 count allowed for better occupancy, this does not give the SM enough warps to switch to when one warp stalls for latency hiding. Latency hiding is important especially for memory bound kernels as it allows the scheduler to switch to different warps when the current one is stalled, this allows each SM to always be busy rather than stalling waiting on memory.
-     - Vectorization: The reason why vectorization plays a role in reducing the elgible warps is because of the required tail handling for when the data is not divisible by 4. This tail handling makes each warp to stall for longer, which means the scheduler will have even less warps to switch to as every warp will stall for a longer duration.<br><br>
-       
+     - Vectorization: The reason why vectorization plays a role in reducing the elgible warps is because of the required tail handling for when the data is not divisible by 4. This tail handling makes each warp to stall for longer, which means the scheduler will have even less warps to switch to as every warp will stall for a longer duration.
 
-
-<br>
 <h3>Why Grid Stride + Vectorized is Slower than the Naive</h3>
 The Grid Stride + Vectorized kernel is effectively slower than the naive because the grid stride significantly decreases the parallelism of the kernel by reducing the number of warps available that the scheduler can switch to, and the tail handling of the vectorization increases the stall duration of each of those warps. These techniques combined essentially transform the kernel from not only just memory bound, but also latency bound where we simply don't have enough warps to switch between to hide the cycles required for each instruction.
 
