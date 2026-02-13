@@ -396,11 +396,17 @@ The Grid Stride + Vectorized kernel is effectively slower than the naive because
 1A. Executed Instruction per Cycle (-16.89%) 0.22 -> 0.19
 1B. Eligible Warps per Scheduler (+0.17%) 0.06 -> 0.07
    - Why this happened:
-     - Now this is definetly interesting I am putting as a positive because with my current mental model it tells me this story. To start from the beginning, vector add is a memory bound kernel, this means to squeeze out more performance from my current understanding we have the following avenues to pursue
+     - With my current mental model, these two statistics point out as interesting to me, and I think at the moment they may show something positive despite a reduced IPC often meaning the kernel is less performative. To start from the beginning, vector add is a memory bound kernel, this means to squeeze out more performance from my current understanding we have the following avenues to pursue
        - Increase parallelism to increase latency hiding by increasing the number of eligible warps per scheduler
        - Reduce memory dependencies to decrease long scoreboard stalls
        - Reduce computation dependency to either reduce long scoreboard stalls, or allow for more active occupancy by reducing register count if that is the limitng factor
-     - The Executed Instruction Per Cycle decrease tells me that this kernel performed worse, but not as much as a I expected. For an example, the vector kernel  
+     - I believe what the ILP=4 kernel is doing is the first, but not using more warps, but rather using latency hiding at the instruction level. In hindsight, I suppose the name makes sense where schedulers can hide latency by switching to different warps, but ILP allows for latency hiding at the thread/instruction level.
+    
+     - The reason why the two statistics I chose stood out to me and why I think their a positive is the following
+       - A decrease in IPC by -16.89%
+         - Now usually a decrease in IPC indicates that we are executing less instructions per cycle meaning we are doing less work per cycle. The thing that was interesting to me though was compared to every other variant of vector add which often lost 50-60% of IPC, the ILP kernel only lost 16.89%. This tells me while the other kernels suffered a loss in IPC because of the technique itself (e.g. grid stride or vectorized), ILP may be suffering not from the technique itself but because we are launching only a fourth of the number of blocks as the naive. This is important because the more blocks we have the more parallelism we can achieve, at least until of course we get diminishing returns and the overhead of adding blocks becomes significant.
+       - A increase in Eligible Warps per Scheduler by +0.17%
+         - Now this is the statistic that makes me think my theory might be true. Every other kernel variant had more occupancy than the naive, but suffered signfiicantly when it came to the number of eligible warps it had, but ILP is the opposite. This makes me think again the limiting factor for this kernel is not the technique itself, but rather the schedulers limited number of blocks to switch to compared to the naive. 
 
 
 
