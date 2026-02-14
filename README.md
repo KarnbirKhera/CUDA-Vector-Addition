@@ -333,7 +333,7 @@ But honestly while the logic checks out to me, the performance of vectorization 
 
 <br><br><br>
 
-<h2>Grid Stride + Vectorized vs Naive</h2>
+<h2>Naive vs Grid Stride + Vectorized</h2>
 
 **Performance Result:** 1.19% slower than Naive <br>
 **Memory Throughput:** 1.32% less than Naive<br>
@@ -370,9 +370,13 @@ But honestly while the logic checks out to me, the performance of vectorization 
    - Why this happened:
      - Grid Stride: The use of grid stride effectively reduced the number of blocks from the naive's 781,250 to 144. While this 144 count allowed for better occupancy, this does not give the SM enough warps to switch to when one warp stalls for latency hiding. Latency hiding is important especially for memory bound kernels as it allows the scheduler to switch to different warps when the current one is stalled, this allows each SM to always be busy rather than stalling waiting on memory.
      - Vectorization: The reason why vectorization plays a role in reducing the elgible warps is because of the required tail handling for when the data is not divisible by 4. This tail handling makes each warp to stall for longer, which means the scheduler will have even less warps to switch to as every warp will stall for a longer duration.
+     >Note: Vectorization allows for 4 floats per single memory instruction. This will result in fewer warps in flight meaning a decrease in the number of eligible warps the scheduler is able to switch to.
 
 <h3>Why Grid Stride + Vectorized is Slower than the Naive</h3>
-The Grid Stride + Vectorized kernel is effectively slower than the naive because the grid stride significantly decreases the parallelism of the kernel by reducing the number of warps available that the scheduler can switch to, and the tail handling of the vectorization increases the stall duration of each of those warps. These techniques combined essentially transform the kernel from not only just memory bound, but also latency bound where we simply don't have enough warps to switch between to hide the cycles required for each instruction.
+The Grid Stride + Vectorized kernel is effectively slower than the naive because the grid stride significantly decreases the parallelism of the kernel by reducing the number of warps available that the scheduler can switch to, and the tail handling of the vectorization increases the stall duration of each of those warps. While the kernel still remains memory bound, these techniques increase the latency of each warp, effectively slowing down the kernel compared to the naive version.
+
+
+These techniques combined essentially transform the kernel from not only just memory bound, but also latency bound where we simply don't have enough warps to switch between to hide the cycles required for each instruction.
 
 
 
