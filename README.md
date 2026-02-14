@@ -436,50 +436,6 @@ What this tells me is the following:
 
 
 
-  <h2>Comparing Naive + Grid Stride vs Naive + Grid Stride + Vectorized</h2>
-  After doing the experiment prior to this, I realized that if we change the focus of our experiment from comparing all the kernels to the naive, but rather to the Naive + Grid Stride, we get an interesting result.
-
-  **Performance Result:** 0.16% faster than Naive + Grid Stride <br>
-  **Memory Throughput:** 1.70% more than Naive + Grid Stride<br>
-
-
-<h3>Why this Happened</h3>
-
-- Now this is very interesting because at this particular moment, I am very unclear on why this kernel performs better than the Naive + Grid Stride because it breaks the mental model I've had thus far, so I will list the differences I see.
-
-  - Significant Decrease in Eligible Warps Per Scheduler (-49.65%): 0.03 -> 0.01
-  - Significant Decrease in Executed IPC Active (-65.29%): 0.11 -> 0.04
-  - Decrease in Achieved Occupancy (-7.92%): 99.70% -> 91.81%
-  - Increase in Register Count (+23.08%): 26 -> 32
-  - Significant Increase in Warp Cycles Per Issued Instruction (+166.21%): 428.91 - > 1141.83
-
-- In past experiments I assumed:
-  
-  - Decreasing Eligible Warps Per Scheduler would decrease memory throughput/increase the duration
-  
-    - I assumed this because if the scheduler had more warps to switch to when the current one stalls, this would allow for more latency hiding.
-      
-  - Decreasing Executed IPC Active would decrease memory throughput/increase the duration
-    
-    - I assumed this because the less work we are doing per cycle, the less memory throughput we have.
-      
-- But this experiment breaks the foundation of my mental model when it comes to memory bound kernels, which is the only type of kernel I've been exposed to thus far.
-
-> The question is, when the naive kernel and the naive + vectorized kernel are compared they perform very similar to one another where SM frequency plays the differenting role. When it comes to Naive + Grid Stride vs Naive + Grid Stride + Vectorization, the vectorization kernel consistently performs better. This makes me think when vectorization is also in the presence of the grid stride technique, we have some sort of compounding attribute that helps the kernel where each alone does not. <br><br><br><br>
-
-
-<h3>Mental Model Understanding</h3>
-
-- The first gap in my mental model wasn't because of how the software interacts with the hardware but rather ann assumption I had made in a prior experiment. When comparing the Naive vs Vectorization kernels, I had assumed that vectorization performed worse than the naive, when in fact it did not. The vectorized kernel actually performed at the same level as the naive, where the only differentiatior was likely the SM clock frequency between each runs. While I maintained a 1.86 GHz SM frequency for all trials, one could assume that there is some precision un-accounted for beyond the 1.86 value. 
-
-> One other thing to note is the tail handling used by the vectorized kernel. Even though the vectorized kernel requires tail handling which increases register pressure due to the increased instructional commands, as well as warp divergence for the last warp, the kernel still performed at the same level as the naive consistently. This tells me to truly compare both the Naive vs Vectorized and to maintain a correct mental model of these techniques, we must assume the data is padded by the host to truly let Vectorization shine. Upon testing Naive vs Vectorized vs Vectorized-No-Tail-Handling, all three kernels perform within the same range where SM frequency and noise play a strong influencing factor.
-
-
-- 
-
-
-
-
 
 
 
