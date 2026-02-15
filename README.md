@@ -233,11 +233,15 @@ The naive cached stream kernel produced a very "bursty" DRAM and L2 cache throug
 
 
 
+<h2>Revisting the L2 Cache Policy</h2>
+Well this is very, very exciting! While making a LinkedIn post about the L2 cache behavior I learned about because it was genuinely so interesting to me, I noticed that the data I had didn't necessarily fully match with my understanding of how the L2 cache worked. Specifically, my theory prior to now was the following:
 
+- Case One: When writing to DRAM, if cache HIT: A single write instruction
+- Case Two: When writing to DRAM, if cache MISS: A single read instruction, followed later by a write instruction
 
+While this does capture some of the naunces of the L2 cache, it over generalizes the behavior of the L2 cache where it assumes all writes are hits because they the sectors are in the L2 cache either already, or because of an implicit read. The data that I saw that disproves this and and actually caught my eye is the following
 
-
-
+- 
 
 
 
