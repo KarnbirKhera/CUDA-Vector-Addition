@@ -234,14 +234,19 @@ The naive cached stream kernel produced a very "bursty" DRAM and L2 cache throug
 
 
 <h2>Revisting the L2 Cache Policy</h2>
-Well this is very, very exciting! While making a LinkedIn post about the L2 cache behavior I learned about because it was genuinely so interesting to me, I noticed that the data I had didn't necessarily fully match with my understanding of how the L2 cache worked. Specifically, my theory prior to now was the following:
+Well this is very, very exciting! While making a LinkedIn post about the L2 cache behavior I learned about because it was genuinely so interesting to me, I noticed that the data I had didn't necessarily fully match with my understanding of how the L2 cache worked. Specifically, my theory prior to now was the following:<br>
 
 - Case One: When writing to DRAM, if cache HIT: A single write instruction
 - Case Two: When writing to DRAM, if cache MISS: A single read instruction, followed later by a write instruction
 
-While this does capture some of the naunces of the L2 cache, it over generalizes the behavior of the L2 cache where it assumes all writes are hits because they the sectors are in the L2 cache either already, or because of an implicit read. The data that I saw that disproves this and and actually caught my eye is the following
+While this does capture some of the naunces of the L2 cache, it over generalizes the behavior of the L2 cache where it assumes all writes are hits because the data we are modifying is either already in the L2 cache, or is in the L2 cache because of a prior implicit read. The data that I mentioned in the section prior actually supports the idea that my old theory did not fully capture how the L2 cache behaves. The specific data that caught my eye was the following: <br>
 
-- 
+- lts__t_sector_op_write_hit_rate.pct = 100.00%
+- lts__t_sectors_op_read.sum = 1,538,775
+- lts__t_sectors_op_write.sum = 25,000,362
+
+The first data point listed represents the 100% hit rate which my theory talks about, and supports. 
+ 
 
 
 
