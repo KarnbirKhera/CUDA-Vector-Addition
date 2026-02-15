@@ -245,8 +245,20 @@ While this does capture some of the naunces of the L2 cache, it over generalizes
 - lts__t_sectors_op_read.sum = 1,538,775
 - lts__t_sectors_op_write.sum = 25,000,362
 
-Lets start with why I thought my theory was correct. The 100% hit rate specifically for writes led me to believe that my old theory was true at the time where in either case a hit is always gaurenteed. The reason I believe my theory was wrong because of the latter two data points. If prior theory was correct, for 25,000,362 sector writes, we would have approximately the same number of reads. This is because naive vector add is perfectly coalesced where a single warp will request to write 128 bytes, which perfectly fits 4 sectors in the DRAM. This means that in my old theory, we should see the same number of reads as the write because each warp will always need to call for the DRAM sector to modify, but by looking at our data, 1.5M reads is significantly below 25M writes which implies the 1.5M must be some sort of overhead, and not related to the writes done by the L2.
- 
+Lets start with why I thought my theory was correct. The 100% hit rate specifically for writes led me to believe that my old theory was true at the time where in either case a hit is always gaurenteed. The reason I believe my theory was wrong because of the latter two data points. <br>
+
+If my prior theory was correct, for 25,000,362 sector writes, we would have approximately the same number of reads. This is because naive vector add is perfectly coalesced where a single warp will request to write 128 bytes, which perfectly fits 4 sectors in the DRAM. This means that in my old theory, we should see the same number of reads as the write because each warp will always need to call for new DRAM sectors to modify, but by looking at our data, 1.5M reads is significantly below 25M writes which implies the 1.5M must be some sort of overhead, and not related to the writes done by the L2.
+
+After realzing this inconsistentency, I ended up doing some research to understand what might explain this L2 cache behavior. While I wasn't able to find any publically facing NVIDIA documentation to explain this behavior, the following two sources I believe capture what I saw with my data.
+
+To start off, I'll explain the first source from my prior section (https://forums.developer.nvidia.com/t/how-do-gpus-handle-writes/58914/5) which I believe explains half of the behavior we saw with our L2 cache. This post mentions the following two possibilities for the write mechanic used by the L2 Cache:
+
+- When performing a write, the L2 cache will first read the required DRAM sector, then write to it, followed by the cache line being marked dirty and sent to the L2 write buffer. This is known as the read-write policy.
+
+Now our second source "Exploring Modern GPU Memory System Design Challenges through Accurate Modeling" (https://arxiv.org/abs/1810.07269) published on arXiv mentions a different L2 cache behavior. This article mentions the following write mechanic performed by the L2 cache:
+
+
+
 
 
 
