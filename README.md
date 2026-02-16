@@ -375,7 +375,7 @@ While understanding this, I thought why dont we use float8 instead? Because woul
 If we were to use float8, that would mean each thread requires 8 (floats) * 4 (size of float) = 32 bytes, which converted to bits is 256 bits. This means for every thread, we would would need a very costly two read operations which is very in-efficient compared to float4 where we request 4 (floats) * 4 (size of float) = 32 bytes which is 128 bits, which only requires a single read transaction as it fits perfecetly within the L1 to register memory bus. This means the reason why float4 works so great is because we're balancing a fine line where we make sure to utilize all the data we can from a single DRAM read, while also making sure not to tip over into needing two costly DRAM reads.
 
 > <p align="center">Note from future self:</p><br>
-> While float8 is not supported in CUDA, so the earlier analsysis rather just theory, the is another more intentional reason why float4 is an amazing and I assume used very often. To best show why using float4 performs the best in this scenario, I will compare if a single thread requests a float, float2 and float4, abd the theoretical float8.
+> While float8 is not supported in CUDA, so our earlier float8 analysis is just theory, lets do deep dive into float, float2, float4 and the theoretical float8 to understand the best use case for each.
 >
 > - float:
 >   - A thread uses a single LDG.32 bit load instruction for a 4 byte float, on a warp scale thats 128 bytes. These 128 bytes require a single cycle to be processed by the 128 byte L2 cache line. These 128 bytes fit into the 4 KB row buffer of the DRAM, and also perfectly fits into four 32 byte sectors of the DRAM.
@@ -417,10 +417,11 @@ If we were to use float8, that would mean each thread requires 8 (floats) * 4 (s
 >     - Compared to float2, slight increased register pressure
 >   - Use Case
 >     - If we want to trade moderate increase in register pressure for a moderate decrease in instructional pressure.
+>     - Float4 is effectively the tipping point where we move the most amount of data for the least amount of instructional pressure.
 >        
 > **Float8:**
->     - Inefficient as it requires two LDG.128 loads instructions.
->     - Upon looking into why an LDG.256 doesn't exist, its likely because the width of the data that can move from the register to the load store unit is 128 bits (matching our prior LDG.128 instruction).
+>   - Inefficient as it requires two LDG.128 loads instructions.
+>   - Upon looking into why an LDG.256 doesn't exist, its likely because the width of the data that can move from the register to the load store unit is 128 bits (matching our prior LDG.128 instruction).
 >      
 >      
      
