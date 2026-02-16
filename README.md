@@ -253,11 +253,16 @@ After realzing this inconsistentency, I ended up doing some research to understa
 
 To start off, I'll explain the first source from my prior section (https://forums.developer.nvidia.com/t/how-do-gpus-handle-writes/58914/5) which I believe explains half of the behavior we saw with our L2 cache. This post mentions the following two possibilities for the write mechanic used by the L2 Cache:
 
-- When performing a write, the L2 cache will first read the required DRAM sector, then write to it, followed by the cache line being marked dirty and sent to the L2 write buffer. This is known as the read-write policy.
+- When performing a write, The L2 cache marks the valid and invalid bytes (bytes that were changed versus not) using a mask. The DRAM then reads this mask when the cache line is evicted from the L2 and updates the values accordingly.
+- When performing a write, the L2 cache immediately reads the sector from the DRAM on a write miss, and then the L2 cache updates the needed values of the sector just read, and the values in the DRAM are updated once the cache line has been evicted (This is the read-write policy is the theory I orginally adopted).
 
-Now our second source "Exploring Modern GPU Memory System Design Challenges through Accurate Modeling" (https://arxiv.org/abs/1810.07269) published on arXiv mentions a different L2 cache behavior. This article mentions the following write mechanic performed by the L2 cache:
+Now our second source "Exploring Modern GPU Memory System Design Challenges through Accurate Modeling" (https://arxiv.org/abs/1810.07269) published on arXiv provides empirical evidence for a different write policy named "write-validate" based on the Volta architecture.
 
+- What write-valdiate does: When the L2 recieves a write, it doesn't fetch from DRAM. It instead writes the bytes directly into the sector (in the L2 cache) and sets the corresponding bits modified using a write mask, marking the written sector as valid and modified.
+- What happens at eviction: If the mask is full (all 32 bytes of the sector are written), the sector is written back to the DRAM without reading the sector beforehand. If the mask is partial, meaning the modified bytes were less than 32, then the missing bytes must first be read from the DRAM, then used to produce a complete write mask before writing to the DRAM.
 
+- This brings up the question that upon recieving a write request, does the L2 cache immediately read the DRAM, or does it wait until after the cache line is modifed and evicted? The researchers used the following experiment to answer this question. They first modified a few bytes in a sector, and then immediately afterwords, read the same sector which resulted in a miss in the L2 cache. This experiment proves that the L2 cache does not commit a read to the DRAM upon recieving a write, because if it had, the L2 sector would have resulted in a hit by the researchers.
+  
 
 
 
