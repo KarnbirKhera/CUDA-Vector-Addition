@@ -30,7 +30,7 @@ specific optimization techniques. This project was also very good for me to lear
 
 Tradeoff of each Technique:
 - Naive: Requires one thread per element, difficult to scale across various GPUs and large n size.
-- Grid-stride: Increased register pressure. Can provide un-necessary overhead if threads > n. In large datasets, can break locality to due large stride size.
+- Grid-stride: Increased register pressure. Can provide un-necessary overhead if threads > n. In large datasets, can break warp locality to due large stride size.
 - Vectorization (float4): Increased register pressure, requires 16 byte alignment, increases coalescing complexity, can require tail handling if n is not divisble by 4.
 - Instructional Level Parallelism: Increased register pressure, increases coalescing complexity.
 
@@ -233,7 +233,7 @@ The naive cached stream kernel produced a very "bursty" DRAM and L2 cache throug
 
 
 
-<h2>Revisting the L2 Cache Policy</h2>
+<h2>Revisting the L2 Cache Write Behavior</h2>
 Well this is very, very exciting! While making a LinkedIn post about the L2 cache behavior I learned about because it was genuinely so interesting to me, I noticed that the data I had didn't necessarily fully match with my understanding of how the L2 cache worked. Specifically, my theory prior to now was the following:<br>
 
 - Case One: When writing to DRAM, if cache HIT: A single write instruction
@@ -272,7 +272,9 @@ To confirm this theory using my own data, I did the following experiment with tw
 The first kernel was given 10 million threads to write across 10 million elements, and the second kernel was given 10 million threads to write across 80 million elements to make up for the stride value of 8. If the theory by the paper holds true, we should see the following results:
 
 - For the first kernel, the ratio between number of written sectors verus those read should be near zero. This is because all of our writes are coalesced, and for every sector we modify, we always modify all 32 bytes with that sector. This means for every write, we should not have a following read.
-- For the second kernel, the ratio between the numbers of written sectors versus those read should be near 1:1. This is because for any given sector, we only modify 4 out of the 32 bytes, this means the L2 cache will need to read the DRAM sector to fully complete its write mask before evicting the dirty cache line. 
+- For the second kernel, the ratio between the numbers of written sectors versus those read should be near 1:1. This is because for any given sector, we only modify 4 out of the 32 bytes, this means the L2 cache will need to read the DRAM sector to fully complete its write mask before evicting the dirty cache line.
+
+<h3>Results</h3>
   
 
 
