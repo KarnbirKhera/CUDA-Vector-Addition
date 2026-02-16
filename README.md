@@ -262,6 +262,17 @@ Now our second source "Exploring Modern GPU Memory System Design Challenges thro
 - What happens at eviction: If the mask is full (all 32 bytes of the sector are written), the sector is written back to the DRAM without reading the sector beforehand. If the mask is partial, meaning the modified bytes were less than 32, then the missing bytes must first be read from the DRAM, then used to produce a complete write mask before writing to the DRAM.
 
 - This brings up the question that upon recieving a write request, does the L2 cache immediately read the DRAM, or does it wait until after the cache line is modifed and evicted? The researchers used the following experiment to answer this question. They first modified a few bytes in a sector, and then immediately afterwords, read the same sector which resulted in a miss in the L2 cache. This experiment proves that the L2 cache does not commit a read to the DRAM upon recieving a write, because if it had, the L2 sector would have resulted in a hit by the researchers.
+
+
+To confirm this theory using my own data, I did the following experiment with two write only kernels.
+
+- The first kernel was a naive write only kernel where we are not reading any values, just writing the value 1.0f.
+- The second kernel was also a naive write only kernel, but the thread index was multiplied by 8 to make sure for every sector, we only write 4 bytes out of the given 32 byte sector.
+
+The first kernel was given 10 million threads to write across 10 million elements, and the second kernel was given 10 million threads to write across 80 million elements to make up for the stride value of 8. If the theory by the paper holds true, we should see the following results:
+
+- For the first kernel, the ratio between number of written sectors verus those read should be near zero. This is because all of our writes are coalesced, and for every sector we modify, we always modify all 32 bytes with that sector. This means for every write, we should not have a following read.
+- For the second kernel, the ratio between the numbers of written sectors versus those read should be near 1:1. This is because for any given sector, we only modify 4 out of the 32 bytes, this means the L2 cache will need to read the DRAM sector to fully complete its write mask before evicting the dirty cache line. 
   
 
 
