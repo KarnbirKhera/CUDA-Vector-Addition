@@ -387,36 +387,37 @@ If we were to use float8, that would mean each thread requires 8 (floats) * 4 (s
 >   - A thread uses two LDG.128 load instructions for a 32 byte float8, on a warp scale thats 1024 bytes. These 1024 bytes require 8 cycles to be processed by the 128 byte L2 cache line. These 1024 bytes fit into the 4 KB row buffer of the DRAM, and also perfectly fits into thirty two 32 byte sectors of the DRAM.
 >
 > Now lets dig into the pros and cons of each.
->  - float:
->    - Pros
->      - Great if register pressure per thread is a limiter.
->      - Great for parallelism if register count per thread is the limiter.
->    - Cons
->      - When compared to float2, we are producing 2x the instructions needed for the same amount of data.
->      - When compared to float4, we are producing 4x the instructions than needed for the same amount of data.
->    - Use Case:
->      - If the bottleneck is register pressure, we can trade register pressure for instructional pressure.
+> float:
+>   - Pros
+>     - Great if register pressure per thread is a limiter.
+>     - Great for parallelism if register count per thread is the limiter.
+>   - Cons
+>     - When compared to float2, we are producing 2x the instructions needed for the same amount of data.
+>     - When compared to float4, we are producing 4x the instructions than needed for the same amount of data.
+>   - Use Case:
+>     - If the bottleneck is register pressure, we can trade register pressure for instructional pressure.
 >        
->  - float2:
->    - Pros
->      - Great compared to float because 2x less instructional pressure
->      - Great compared to float4 because slightly less register pressure
->    - Cons
->      - When compared to float, we have a slight increase in register pressure. 
->      - When compared to float4, we are producing 2 times the instructions than needed for the same amount of data float4 produces.
+> float2:
+>   - Pros
+>     - Great compared to float because 2x less instructional pressure
+>     - Great compared to float4 because slightly less register pressure
+>   - Cons
+>     - When compared to float, we have a slight increase in register pressure. 
+>     - When compared to float4, we are producing 2 times the instructions than needed for the same amount of data float4 produces.
 >   - Use Case:
 >     - If we want to slightly trade increased register pressure, for decreased instructional pressure.
 >       
->  - float4:
->    - Pros
->      - Great compared to float because 4x less instructional pressure
->      - Great compared to float2 because 2x less instructional pressure
->    - Cons
->      - Compared to float, modererate increased register pressure
->      - Compared to float2, slight increased register pressure
->    - Use Case
->      - If we want to trade moderate increase in register pressure for a moderate decrease in instructional pressure.
->   - float8:
+> float4:
+>   - Pros
+>     - Great compared to float because 4x less instructional pressure
+>     - Great compared to float2 because 2x less instructional pressure
+>   - Cons
+>     - Compared to float, modererate increased register pressure
+>     - Compared to float2, slight increased register pressure
+>   - Use Case
+>     - If we want to trade moderate increase in register pressure for a moderate decrease in instructional pressure.
+>        
+> float8:
 >     - Inefficient as it requires two LDG.128 loads instructions.
 >     - Upon looking into why an LDG.256 doesn't exist, its likely because the width of the data that can move from the register to the load store unit is 128 bits (matching our prior LDG.128 instruction).
 >      
