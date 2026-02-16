@@ -370,8 +370,58 @@ The grid stride kernel performs slower than the naive because while it improves 
     
     - The reason why recieving 4 floats at once is very similar to the amount of time it takes to recieve a single float is because of the way the DRAM's architecture is setup. When we request a single 4 byte float, we are essentially eating the cost of reading the DRAM sector for just a 1/4th of the data it holds, although note in reality instructional commands are executed at the warp level so we would actually use all 32 bytes in said sector. When we use vectorization, we still eat the same cost of reading the DRAM sector, but we are using 16 bytes out of the 32 bytes that sector holds so we are essentially getting more data per read, and again at a warp level we are actually using all of the data contained within this DRAM sector.
 
-    > While understanding this, I thought why dont we use float8 instead? Because wouldn't 8 floats mean the thread would perfectly request 32 bytes of data, which perfectly fits the 32 byte DRAM sector using just a single memory request? The reasonining why this wouldn't be as efficient is again leads us back to the GPU architecture, specifically to the size of the 128 bit memory bus from the L1 cache to the registers.<br><br>
-    > If we were to use float8, that would mean each thread requires 8 (floats) * 4 (size of float) = 32 bytes, which converted to bits is 256 bits. This means for every thread, we would would need a very costly two read operations which is very in-efficient compared to float4 where we request 4 (floats) * 4 (size of float) = 32 bytes which is 128 bits, which only requires a single read transaction as it fits perfecetly within the L1 to register memory bus. This means the reason why float4 works so great is because we're balancing a fine line where we make sure to utilize all the data we can from a single DRAM read, while also making sure not to tip over into needing two costly DRAM reads.
+While understanding this, I thought why dont we use float8 instead? Because wouldn't 8 floats mean the thread would perfectly request 32 bytes of data, which perfectly fits the 32 byte DRAM sector using just a single memory request? The reasonining why this wouldn't be as efficient is again leads us back to the GPU architecture, specifically to the size of the 128 bit memory bus from the L1 cache to the registers.<br><br>
+
+If we were to use float8, that would mean each thread requires 8 (floats) * 4 (size of float) = 32 bytes, which converted to bits is 256 bits. This means for every thread, we would would need a very costly two read operations which is very in-efficient compared to float4 where we request 4 (floats) * 4 (size of float) = 32 bytes which is 128 bits, which only requires a single read transaction as it fits perfecetly within the L1 to register memory bus. This means the reason why float4 works so great is because we're balancing a fine line where we make sure to utilize all the data we can from a single DRAM read, while also making sure not to tip over into needing two costly DRAM reads.
+
+> Note from future self after learning more:
+> While float8 is not supported in CUDA, so the earlier analsysis rather just theory, the is another more intentional reason why float4 is an amazing and I assume used very often. To best show why using float4 performs the best in this scenario, I will compare if a single thread requests a float, float2 and float4, abd the theoretical float8.
+>
+> - float:
+>   - A thread uses a single LDG.32 bit load instruction for a 4 byte float, on a warp scale thats 128 bytes. These 128 bytes require a single cycle to be processed by the 128 byte L2 cache line. These 128 bytes fit into the 4 KB row buffer of the DRAM, and also perfectly fits into four 32 byte sectors of the DRAM.
+> - float2:
+>   - A thread uses a single LDG.64 load instruction for a 8 byte float2, on a warp scale thats 256 bytes. These 256 bytes require two cycles to be processed by the 128 byte L2 cache line. These 256 bytes fit into the 4 KB row buffer of the DRAM, and also perfectly fits into eight 32 byte sectors of the DRAM.
+> - float4:
+>   - A thread uses a single LDG.128 load instruction for a 16 byte float4, on a warp scale thats 512 bytes. These 512 bytes require 4 cycles to be processed by the 128 byte L2 cache line. These 512 bytes fit into the 4 KB row buffer of the DRAM, and also perfectly fits into sixteen 32 byte sectors of the DRAM.
+> - float8:
+>   - A thread uses two LDG.128 load instructions for a 32 byte float8, on a warp scale thats 1024 bytes. These 1024 bytes require 8 cycles to be processed by the 128 byte L2 cache line. These 1024 bytes fit into the 4 KB row buffer of the DRAM, and also perfectly fits into thirty two 32 byte sectors of the DRAM.
+>
+> Now lets dig into the pros and cons of each.
+>  - float:
+>    - Pros
+>      - Great if register pressure per thread is a limiter.
+>      - Great for parallelism if register count per thread is the limiter.
+>    - Cons
+>      - When compared to float2, we are producing 2x the instructions needed for the same amount of data.
+>      - When compared to float4, we are producing 4x the instructions than needed for the same amount of data.
+>    - Use Case:
+>      - If the bottleneck is register pressure, we can trade register pressure for instructional pressure.
+>        
+>  - float2:
+>    - Pros
+>      - Great compared to float because 2x less instructional pressure
+>      - Great compared to float4 because slightly less register pressure
+>    - Cons
+>      - When compared to float, we have a slight increase in register pressure. 
+>      - When compared to float4, we are producing 2 times the instructions than needed for the same amount of data float4 produces.
+>   - Use Case:
+>     - If we want to slightly trade increased register pressure, for decreased instructional pressure.
+>       
+>  - float4:
+>    - Pros
+>      - Great compared to float because 4x less instructional pressure
+>      - Great compared to float2 because 2x less instructional pressure
+>    - Cons
+>      - Compared to float, modererate increased register pressure
+>      - Compared to float2, slight increased register pressure
+>    - Use Case
+>      - If we want to trade moderate increase in register pressure for a moderate decrease in instructional pressure.
+>   - float8:
+>     - Inefficient as it requires two LDG.128 loads instructions.
+>     - Upon looking into why an LDG.256 doesn't exist, its likely because the width of the data that can move from the register to the load store unit is 128 bits (matching our prior LDG.128 instruction).
+>      
+>      
+     
 
 <h3>Why it's slower</h3>
 
