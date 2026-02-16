@@ -303,6 +303,11 @@ Based off the following results on the Ada Lovelace architecture (RTX 4060), one
   
 While I've learned that the explicit cost of uncoalesced access is essentially wasting precious bandwidth, it has been very interesting to learn that on the Ada Lovelace architecture, there is also an implicit read cost as well!
 
+Circling back to the origin of this investigation which was why vector add had a ~31% hit rate despite being a fully streaming kernel, I have the following claim. Vector add performs two reads, A and B, and performs a single write C. We've already confirmed using our read only kernel that each A and B read has a hit rate of ~0.7, which leaves us to understand why the hit rate of our single write is always 100%. 
+
+>Note in the section before, I isolate the vector add kernel into their read and write variants isolated. After looking back now with the experience I have reading Nsight compute, I can see that even the orginial vector add kernel was hinting that the write hit rate was a 100% using the lts__t_sector_op_write_hit_rate.pct metric, meaning we did not need to isolate those variants. None the less, the process itself was very fun even if it might have been not been needed.
+
+The reason why I believe the hit rate of write is always a 100% is because no matter what case we hit, whether that be coalesced or uncoalesced access, the write action is always performed. This means once the kernel sends the write request and it reaches the L2 cache, the write always has a way to reach the required DRAM sector.
 
 
 
