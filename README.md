@@ -374,7 +374,7 @@ While understanding this, I thought why dont we use float8 instead? Because woul
 
 If we were to use float8, that would mean each thread requires 8 (floats) * 4 (size of float) = 32 bytes, which converted to bits is 256 bits. This means for every thread, we would would need a very costly two read operations which is very in-efficient compared to float4 where we request 4 (floats) * 4 (size of float) = 32 bytes which is 128 bits, which only requires a single read transaction as it fits perfecetly within the L1 to register memory bus. This means the reason why float4 works so great is because we're balancing a fine line where we make sure to utilize all the data we can from a single DRAM read, while also making sure not to tip over into needing two costly DRAM reads.
 
-> Note from future self after learning more:
+> <p align="center">Note from future self:</p><br>
 > While float8 is not supported in CUDA, so the earlier analsysis rather just theory, the is another more intentional reason why float4 is an amazing and I assume used very often. To best show why using float4 performs the best in this scenario, I will compare if a single thread requests a float, float2 and float4, abd the theoretical float8.
 >
 > - float:
