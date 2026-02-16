@@ -116,7 +116,11 @@ to call for multiple sectors for away from one another. <br><br>
 Because the orginial kernel was memory bound, the extra instructions and register pressure simply added overhead resulting in a 1-3% decrease in memory throughput. Grid stride is still a very effective technique that allows the kernel to scale, but not effective in raw performance for a memory bound kernel.
 
 <h2>Vectorization</h2>
-Vectorization (float4) reduces the memory instructions to the DRAM by having a single thread call for 4 floats at once, rather in the naive where a thread calls for a single float utilizing only 4 bytes out of 32 bytes provided by the request. Float4 vectorization allows perfect utilization of this minimum 32 byte memory transaction from the DRAMs 32 byte sectors.<br><br>
+Vectorization (float4) reduces the memory instructions to the DRAM by having a single thread call for 4 floats at once, rather in the naive where a thread calls for a single float utilizing only 4 bytes out of 32 bytes provided by the request. Float4 vectorization allows perfect utilization of this minimum 32 byte memory transaction from the DRAMs 32 byte sectors.
+
+> <p align="center">A note from future self</p>
+> My prior vectorization explanation makes it sound like the naive is uncoalesced, but on a warp scale where instructions are issued, the naive coalesces to 128 bytes whereas the vectorized coalesces to 512 bytes.
+<br><br>
 
 Although vectorization is more efficient when it comes to memory instructions, it does not tackle the memory bound nature of the kernel. The kernel does perform at a similar level as the naive likely because the only additional instructional overhead is in the tail end of the kernel.
 
