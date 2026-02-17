@@ -564,7 +564,7 @@ $$ \text{Arithmetic Intensity} (AI) = \frac{\text{Total Operations (FLOPs)}}{\te
 **2. Once the equation is analyzed, I would do the following which I recently learned about. This process is a lot more complicated (which makes it alot more interesting), but offers a significant theoretical view into our kernel.**
 
 <h3>A. DRAM Bandwidth Bound </h3>
-How long would the kernel take if the DRAM delivered bytes at its theoretical maximum speed (milliseconds)?<br>
+How long would the kernel take if the DRAM delivered bytes at its theoretical maximum speed (milliseconds)?<br><br>
 
 
 $$ T_{DRAM} = \frac{\text{Total Bytes Transferred}}{\text{Peak DRAM Bandwidth}} $$
@@ -589,7 +589,7 @@ $$ \text{Peak FLOPS} = \text{CUDA Cores} \times \text{Clock Speed} \times 1 \tex
 
 
 
-<br>
+<br><br><br>
 
 
 
@@ -622,7 +622,7 @@ $$ T_{L2} = \frac{\text{Total Bytes through L2}}{\text{L2 Bandwidth}} $$
 
 
 <h3>E. Instruction Issue Bound</h3>
-Can the warp scheduler issue instructions (math, memory, control flow, etc) fast enough? (milliseconds)
+Can the warp scheduler issue instructions (math, memory, control flow, etc) fast enough? (milliseconds)<br><br>
 
 $$ T_{Issue} = \frac{\text{Total Warp Instructions}}{\text{Warp Instruction Issue Rate}} $$
 
@@ -652,7 +652,7 @@ $$ \text{LSU Issue Rate} = \text{LSUs per SM} \times \text{Num SMs} \times \text
 
 
 <h3>G. Shared Memory Bandwidth Bound</h3>
-Can shared memory serve all the reads and writes required fast enough?
+Can shared memory serve all the reads and writes required fast enough?<br><br>
 
 $$ T_{SMEM} = \frac{\text{Total Shared Memory Transactions}}{\text{Shared Memory Bandwidth}} $$
 
@@ -666,7 +666,7 @@ $$ \text{Shared Memory Bandwidth} = \text{Banks per SM} \times \text{Bytes per B
 
 
 <h3>H. PCIe Transfer Bound</h3>
-Is the kernel wiating on data moving from the CPU and GPU, rather than actually computing?
+Is the kernel wiating on data moving from the CPU and GPU, rather than actually computing?<br><br>
 
 $$ T_{PCIe} = \frac{\text{Total Bytes Transferred (Host} \leftrightarrow \text{Device)}}{\text{PCIe Bandwidth}} $$
 
@@ -679,7 +679,7 @@ $$ T_{PCIe} = \frac{\text{Total Bytes Transferred (Host} \leftrightarrow \text{D
 
 
 <h3>I. Theoretical Runtime</h3>
-The slowest bottleneck determines the kernel's speed.
+The slowest bottleneck determines the kernel's speed.<br><br>
 
 $$ T_{Kernel} = \max(T_{DRAM},\ T_{Compute},\ T_{L2},\ T_{LSU},\ T_{Issue},\ T_{SMEM},\ T_{PCIe}) $$
 
