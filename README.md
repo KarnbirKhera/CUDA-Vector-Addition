@@ -183,7 +183,7 @@ From the following SASS panel for the naive kernel we see a "Store to Global Mem
 - When writing to DRAM, if cache HIT: A single write instruction
 - When writing to DRAM, if cache MISS: A single read instruction, followed later by a write instruction
 
-> _Note: I later discovered this model was incomplete. The next section "Revisting the L2 Cache Write Behavior" depicts the behavior more accurately._
+> _Note: I later discovered this model was incomplete. The next section "Revisiting the L2 Cache Write Behavior" depicts the behavior more accurately._
 
 For this kernel we have a single 4 byte float write per thread, on a warp scale this results in a perfect 128 byte write to the 128 byte cache line. This means for every new warp write, there is a very high likelyhood the required four 32 byte sectors in the DRAM are not in the L2 cache. This means every warp write will result in a cache line miss, because of this the kernel is required to do a DRAM read of the four 32 byte sectors in the DRAM before writing. This is supported by following images where the L2 lts__t_sectors_op_read.sum is 1,538,775, and in the Nsight compute kernel we have a total sector misses to device of 1,508,103, this suggests these L2 cache misses result in a signfiicant amount of reads made by the kernel. This GPU behavior of cache miss resulting in a read is supported by the following NVIDIA post https://forums.developer.nvidia.com/t/how-do-gpus-handle-writes/58914/5.
 
@@ -211,13 +211,13 @@ The in-efficiency lies where the DRAM's single row buffer does not allow the ful
 - The L2 cache: Opens a cache line to memory sector A (50 nanoseconds) and batch writes two 16 byte values (~20 nanoseconds)
 - The L2 cache: Opens a cache line to memory sector B (50 nanoseconds) and batch writes two 16 byte values (~20 nanoseconds)
 
-Rather than needing to re-open cache lines, the L2 cache gathers all the needed values to be written for each memory sector, then does a single read followed by a batch write. This allows turns an in-efficient 280 nanosecond operation into an efficient 140 nanosecond operation.
+Rather than needing to re-open cache lines, the L2 cache gathers all the needed values to be written for each memory sector, then does a single read followed by a batch write. This turns an inefficient 280 nanosecond operation into an efficient 140 nanosecond operation.
 
-Now going back to the STG.E, it turns out after more research the .E is actually a modifier for the STG command when it comes to the caching policy. The .E represents that this data will follow a normal replacement policy, meaning it is neither elevated to be removed first, or elevated to be kept. This adds an interesting layer of granularity because while we cannot change the fundamental nature of the read write structure, we can although modify the L2 cache policy of the data we send.
+Now going back to the STG.E, it turns out after more research the .E is actually a modifier for the STG command when it comes to the caching policy. The .E represents that this data will follow a normal replacement policy, meaning it is neither elevated to be removed first, or elevated to be kept. This adds an interesting layer of granularity because while we cannot change the fundamental nature of the read write structure, we can also modify the L2 cache policy of the data we send.
 
 Looking at vector add kernel, we know that the entire process itself is purely streamed data, meaning data is loaded once, and never used or needed again. We can actually modify this cache policy with a ".cs" modifier which hints to the PTX to SASS compiler that the data is not needed once used, allowing it to be evicted first, which should in theory in-directly allow for more data to flow through the L2 cache. The reason this would theoretically allow more data to flow is because the default cache policy evicts the oldest or least recently used, but using the ".cs" should save the cache controller time and compute as it does not need to find/calculate the oldest cache line. 
 
-However, I would imagine this comes at a cost of having to "tag" or use meta-data to convey to the compiler that this specific cache line can be evicted first. I would once again imagine, when n is low the cost of adding this "tag" would likely overweigh its need, whereas if we have a large n size, the "tag" overhead becomes minimial.
+However, I would imagine this comes at a cost of having to "tag" or use meta-data to convey to the compiler that this specific cache line can be evicted first. I would once again imagine, when n is low the cost of adding this "tag" would likely outweigh its need, whereas if we have a large n size, the "tag" overhead becomes minimial.
 
 There is also another cache policy modifier known as .lu (Last Use). This means once the cache line is utilized, the cache line is disposed of even if the L2 cache is not full. This likely has the same n size use case mentioned for .cs (Cached Streaming).
 
@@ -239,7 +239,7 @@ The naive cached stream kernel produced a very "bursty" DRAM and L2 cache throug
 
 
 
-<h2>Revisting the L2 Cache Write Behavior</h2>
+<h2>Revisiting the L2 Cache Write Behavior</h2>
 Well this is very, very exciting! While making a LinkedIn post about the L2 cache behavior I learned about because it was genuinely so interesting to me, I noticed that the data I had didn't necessarily fully match with my understanding of how the L2 cache worked. Specifically, my theory prior to now was the following:<br>
 
 - Case One: When writing to DRAM, if cache HIT: A single write instruction
@@ -264,7 +264,7 @@ To start off, I'll explain the first source from my prior section (https://forum
 
 Now our second source "Exploring Modern GPU Memory System Design Challenges through Accurate Modeling" (https://arxiv.org/abs/1810.07269) published on arXiv provides empirical evidence for a different write policy named "write-validate" based on the Volta architecture.
 
-- What write-valdiate does: When the L2 recieves a write, it doesn't fetch from DRAM. It instead writes the bytes directly into the sector (in the L2 cache) and sets the corresponding bits modified using a write mask, marking the written sector as valid and modified.
+- What write-validate does: When the L2 recieves a write, it doesn't fetch from DRAM. It instead writes the bytes directly into the sector (in the L2 cache) and sets the corresponding bits modified using a write mask, marking the written sector as valid and modified.
 - What happens at eviction: If the mask is full (all 32 bytes of the sector are written), the sector is written back to the DRAM without reading the sector beforehand. If the mask is partial, meaning the modified bytes were less than 32, then the missing bytes must first be read from the DRAM, then used to produce a complete write mask before writing to the DRAM.
 
 - This brings up the question that upon recieving a write request, does the L2 cache immediately read the DRAM, or does it wait until after the cache line is modifed and evicted? The researchers used the following experiment to answer this question. They first modified a few bytes in a sector, and then immediately afterwards, read the same sector which resulted in a miss in the L2 cache. This experiment proves that the L2 cache does not commit a read to the DRAM upon recieving a write, because if it had, the L2 sector would have resulted in a hit by the researchers.
@@ -309,7 +309,7 @@ Based off the following results on the Ada Lovelace architecture (RTX 4060), one
   
 While I've learned that the explicit cost of uncoalesced access is essentially wasting precious bandwidth, it has been very interesting to learn that on the Ada Lovelace architecture, there is also an implicit read cost as well!
 
-Circling back to the origin of this investigation which was why vector add had a ~31% hit rate despite being a fully streaming kernel, I have the following claim. Vector add performs two reads, A and B, and performs a single write C. We've already confirmed using our read only kernel that each A and B read has a hit rate of ~0.07, which leaves us to understand why the hit rate of our single write is always 100%. 
+Circling back to the origin of this investigation which was why vector add had a ~31% hit rate despite being a fully streaming kernel, I have the following claim. Vector add performs two reads, A and B, and performs a single write C. We've already confirmed using our read only kernel that each A and B read has a hit rate of ~0.07%, which leaves us to understand why the hit rate of our single write is always 100%. 
 
 >Note in the section before, I isolate the vector add kernel into their read and write variants isolated. After looking back now with the experience I have reading Nsight compute, I can see that even the orginial vector add kernel was hinting that the write hit rate was a 100% using the lts__t_sector_op_write_hit_rate.pct metric, meaning we did not need to isolate those variants. None the less, the process itself was very fun even if it might have been not been needed.
 
@@ -333,7 +333,7 @@ The reason why I believe the hit rate of write is always a 100% is because no ma
 **1. Higher Occupancy (+15.66%): 85.61% -> 99.02%**
 
   - Why this happened:
-    - The naive kernel uses 781,250 blocks at 256 threads each to process all 200,000,000 elements. This means there is likely some overhead due to the number of blocks we launch that prevents each SM from fully occupying the maxmimum 6 active blocks per SM, which is mentioned in the Achieved Occupancy section under the Nsight Compute Analysis for the Naive kernel. In the grid stride kernel however, we launch 144 blocks which one reduces this block overhead faced in the naive kernel, but also perfectly fits in the 24 SMs which fit 6 active blocks each.
+    - The naive kernel uses 781,250 blocks at 256 threads each to process all 200,000,000 elements. This means there is likely some overhead due to the number of blocks we launch that prevents each SM from fully occupying the maxmimum 6 active blocks per SM, which is mentioned in the Achieved Occupancy section under the Nsight Compute Analysis for the Naive kernel. In the grid stride kernel however, we launch 144 blocks which one both this block overhead faced in the naive kernel, but also perfectly fits in the 24 SMs which fit 6 active blocks each.
 
 <h3>Why It's Still Slower</h3>
 
@@ -447,14 +447,12 @@ While float8 is not supported in CUDA, so our earlier float8 analysis is just th
 
 
 
-<h3>Why Grid Stride + Vectorized is Slower than the Naive</h3>
+<h3>Why Vectorized is Slower than the Naive</h3>
 Despite Vectorization reducing the amount of instructions required to recieve data, it does not tackle the core problem of the vector add kernel. Vector add is inherinently memory bound, and from my current understanding the way we can improve a memory bound kernel is by either increasing parallelism through more warps, decreasing memory dependency chains which is not possible with vector add due to its simplicity and I would also assume decreasing computational complexity, which is also not possible due to the same reason. <br><br>
-
 
 Vectorization actually decreases parallelism in this case, not because of the technique itself, but rather because to ensure all elements are computed and nothing more or less is done, we must launch n/4 threads. This means less threads, resulting in less warps, resulting in less blocks which means less blocks for the SM to switch to during stalls.
 
-But honestly while the logic checks out to me, the performance of Vectorization versus the naive is so similar, one could conclude that both kernels perform at the same level.
-
+While the following may be true, both the Naive and Vectorized kernels perform at a similar speed with a similar standard deviation. It can be assumed that the SM frequency at a given time will determine with kernel will outperform the other.
 
 
 
@@ -501,6 +499,10 @@ But honestly while the logic checks out to me, the performance of Vectorization 
        - _int n4 = n / 4:_ This is used to calculate the number of elements that are divisible and can be operated using float 4, and was responsible for 23.08% of all instructions executed
        - _Tail Handling:_ The tail handling was responsible for 7.69% of all instructions executed
        - **Note:** I believe in most vectorized kernels, the data is often padded by the host before being sent to the device, which would circumvent this problem completely. For the sake of learning why this is done in the first place, padding was not used.
+
+  > Note from future self: <br><br>
+  > While both grid stride and vectorization played a role in increasing the Warp Cycles per Instruction, one could say that the drastic increase in cycles is likely because vectorization reduced the number of required warp cycles, but the stall time remained the same, hence a larger Warp Cycles Per Instruction value.
+
    
 2. Reduction in Eligible Warps (-76.20%): 0.06 -> 0.02 warps
    - Why this happened:
@@ -532,7 +534,7 @@ The Grid Stride + Vectorized kernel is effectively slower than the naive because
 <h3>Current Theory</h3>
 
 1A. Executed Instruction per Cycle (-16.89%) 0.22 -> 0.19<br>
-1B. Eligible Warps per Scheduler (+0.17%) 0.06 -> 0.07
+1B. Eligible Warps per Scheduler (+0.17%) 0.06% -> 0.07%
    - What this means:
      - With my current mental model, these two statistics point out as interesting to me, and I think at the moment they may show something positive despite a reduced IPC often meaning the kernel is less performative. To start from the beginning, vector add is a memory bound kernel, this means to squeeze out more performance from my current understanding we have the following avenues to pursue
        - Increase parallelism to increase latency hiding by increasing the number of eligible warps per scheduler
@@ -592,8 +594,8 @@ What this tells me is the following:
 <h3>Hardware</h3>
 On current GPU (RTX 4060):<br>
 - 24 SMs<br>
-- 6 max residental blocks per SM<br>
-- 1,536 max residental thread per SM<br>
+- 6 max residential blocks per SM<br>
+- 1,536 max residential thread per SM<br>
 - 65,536 max registers per SM <br>
 - 36,864 max threads for GPU <br>
 - 1,572,864 max registers for GPU<br>
