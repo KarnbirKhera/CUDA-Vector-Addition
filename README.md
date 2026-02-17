@@ -734,8 +734,12 @@ To test this theory, lets apply the following equations to vector add where they
 <h2>Vector Add Equations</h2>
 
 <h3>DRAM Bandwidth Bound</h3>
-<img width="2120" height="432" alt="image" src="https://github.com/user-attachments/assets/81144949-f6b0-48ed-b0f2-88b1ef257c44" />
+<img width="2083" height="501" alt="image" src="https://github.com/user-attachments/assets/07362b37-4a8b-4e01-af16-7f5e696d4915" />
 
+<br><br><br>
+
+<h3>Compute Bound</h3>
+<img width="2103" height="697" alt="image" src="https://github.com/user-attachments/assets/8835f4e6-db46-46c3-8ba8-6cdd7d78ee86" />
 
 
 
