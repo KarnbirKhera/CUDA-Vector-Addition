@@ -721,14 +721,18 @@ The slowest bottleneck determines the kernel's speed.<br><br>
 $$ T_{Kernel} = \max(T_{DRAM},\ T_{Compute},\ T_{L2},\ T_{LSU},\ T_{Issue},\ T_{SMEM},\ T_{PCIe}) $$
 
 
-After looking into it, there are many other ways to be bounded as well! This is great because it allows us to diagnose our kernel at a much deeper level before we even write the kernel. The reason I wrote the time to write this all out is because I think it might actually be a very, very helpful way to know what optimization technique to use for this kernel and all the kernels beyond. I believe this might be the case because say we're memory bound, these equations tell us what variables contribute to our kernel's bottleneck, and what potential optimization technique we can perform to allow for more throughput!
+After looking into it, there are many other ways to be bounded as well! This is great because it allows us to diagnose our kernel at a much deeper level before we even write the kernel. The reason I wrote the time to write this all out is because I think it might actually be a very, very helpful way to know what optimization technique to use for this kernel and all the kernels beyond. I believe this might be the case because say we're DRAM Bandwidth bound, these equations tell us what variables contribute to our kernel's bottleneck, and what potential optimization technique we can perform to allow for more throughput!
 
 To test this theory, lets apply the following equations to vector add where they apply!
 
 
+<br><br><br><br>
+
+
 <h2>Vector Add Equations</h2>
 
-<h3>Memory Bound</h3>
+<h3>DRAM Bandwidth Bound</h3>
+<img width="2120" height="432" alt="image" src="https://github.com/user-attachments/assets/81144949-f6b0-48ed-b0f2-88b1ef257c44" />
 
 
 
