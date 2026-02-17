@@ -623,7 +623,7 @@ $$ \text{Bytes in Flight Needed} = \text{Peak Bandwidth} \times \text{DRAM Laten
 
 Needed information to calculate:
 - **Kernel:** How many independent memory requests can be inflight at once per thread, Bytes per memory request
-- **Hardware:** Peak DRAM bandwidth, DRAM latency, Max warps per SM, Number of SMs
+- **Hardware:** Peak DRAM bandwidth, DRAM latency, Max warps per SM, Number of SMs<br>
   _Note: Can use actual achieved maximum warps instead_
 
 <br><br><br>
