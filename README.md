@@ -573,7 +573,7 @@ $$ \text{Arithmetic Intensity} (AI) = \frac{\text{Total Operations (FLOPs)}}{\te
 **2. Once the equation is analyzed, I would do the following which I recently learned about. This process is a lot more complicated (which makes it alot more interesting), but offers a significant theoretical view into our kernel.**
 
 <h3>A. DRAM Bandwidth Bound </h3>
-How long would the kernel take if the DRAM delivered bytes at its theoretical maximum speed (milliseconds)?<br><br>
+How long would the kernel take if the DRAM delivered bytes at its theoretical maximum speed (seconds)?<br><br>
 
 
 $$ T_{DRAM} = \frac{\text{Total Bytes Transferred}}{\text{Peak DRAM Bandwidth}} $$
@@ -593,7 +593,7 @@ Needed information to calculate:
 
 
 <h3>B. Compute Bound </h3>
-How long would the kernel take if every core computed at its theoretical maximum (milliseconds)?<br><br>
+How long would the kernel take if every core computed at its theoretical maximum (seconds)?<br><br>
 
 
 $$ T_{Compute} = \frac{\text{Total FLOPs}}{\text{Peak FLOPS}} $$
@@ -635,7 +635,7 @@ Needed information to calculate:
 
 
 <h3>D. L2 Cache Bandwidth Bound</h3>
-Can the L2 cache feed data to the SMs fast enough, or is it a bottleneck? (milliseconds)<br><br>
+Can the L2 cache feed data to the SMs fast enough, or is it a bottleneck? (seconds)<br><br>
 
 $$ T_{L2} = \frac{\text{Total Bytes through L2}}{\text{L2 Bandwidth}} $$
 
@@ -651,7 +651,7 @@ Needed information to calculate:
 
 
 <h3>E. Instruction Issue Bound</h3>
-Can the warp scheduler issue instructions (math, memory, control flow, etc) fast enough? (milliseconds)<br><br>
+Can the warp scheduler issue instructions (math, memory, control flow, etc) fast enough? (seconds)<br><br>
 
 $$ T_{Issue} = \frac{\text{Total Warp Instructions}}{\text{Warp Instruction Issue Rate}} $$
 
@@ -668,7 +668,7 @@ Needed information to calculate:
 
 
 <h3>F. Load/Store Unit Throughput Bound</h3>
-Can the Load Store Unit in each SM, which only translates memory instructions to actual memory requests, issue them fast enough? (milliseconds)
+Can the Load Store Unit in each SM, which only translates memory instructions to actual memory requests, issue them fast enough? (seconds)
 
 $$ T_{LSU} = \frac{\text{Total Warp Memory Instructions}}{\text{LSU Issue Rate}} $$
 
@@ -687,7 +687,7 @@ Needed information to calculate:
 
 
 <h3>G. Shared Memory Bandwidth Bound</h3>
-Can shared memory serve all the reads and writes required fast enough? (milliseconds)<br><br>
+Can shared memory serve all the reads and writes required fast enough? (seconds)<br><br>
 
 $$ T_{SMEM} = \frac{\text{Total Shared Memory Transactions}}{\text{Shared Memory Bandwidth}} $$
 
@@ -702,7 +702,7 @@ Needed information to calculate:
 
 
 <h3>H. PCIe Transfer Bound</h3>
-Is the kernel waiting on data moving from the CPU and GPU, rather than actually computing? (milliseconds) <br><br>
+Is the kernel waiting on data moving from the CPU and GPU, rather than actually computing? (seconds) <br><br>
 
 $$ T_{PCIe} = \frac{\text{Total Bytes Transferred (Host} \leftrightarrow \text{Device)}}{\text{PCIe Bandwidth}} $$
 
