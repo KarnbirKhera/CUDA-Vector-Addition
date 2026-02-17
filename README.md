@@ -655,7 +655,7 @@ $$ T_{Issue} = \frac{\text{Total Warp Instructions}}{\text{Warp Instruction Issu
 
 $$ \text{Warp Instruction Issue Rate} = \text{Schedulers per SM} \times \text{Num SMs} \times \text{Clock Speed} $$
 
-
+Needed information to calculate:
 - **Kernel:** Total instructions per element (from Nsight)
 - **Hardware:** Schedulers per SM, Number of SMs, Clock speed, Warp size
 
@@ -674,6 +674,8 @@ $$ \text{Total Warp Memory Instructions} = \frac{N \times \text{Memory Ops per E
 
 $$ \text{LSU Issue Rate} = \text{LSUs per SM} \times \text{Num SMs} \times \text{Clock Speed} $$
 
+
+Needed information to calculate:
 - **Kernel:** N, Memory operations per element (loads + stores)
 - **Hardware:** Load Store Units per SM, Number of SMs, Clock speed, Warp size
 
@@ -689,7 +691,7 @@ $$ T_{SMEM} = \frac{\text{Total Shared Memory Transactions}}{\text{Shared Memory
 
 $$ \text{Shared Memory Bandwidth} = \text{Banks per SM} \times \text{Bytes per Bank per Cycle} \times \text{Clock Speed} \times \text{Num SMs} $$
 
-
+Needed information to calculate:
 - **Kernel:** Shared memory transaction per element, bank conflict multiplier (1x if no conflicts)
 - **Hardware:** Banks per SM, Bytes per bank per cycle, Clock speed, Number of SMs
 
@@ -703,6 +705,8 @@ Is the kernel waiting on data moving from the CPU and GPU, rather than actually 
 $$ T_{PCIe} = \frac{\text{Total Bytes Transferred (Host} \leftrightarrow \text{Device)}}{\text{PCIe Bandwidth}} $$
 
 
+
+Needed information to calculate:
 - **Kernel:** Total bytes sent to device + Total bytes read back from device
 - **Hardware:** PCIe bandwidth
 
