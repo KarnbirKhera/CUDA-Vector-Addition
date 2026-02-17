@@ -333,7 +333,7 @@ The reason why I believe the hit rate of write is always a 100% is because no ma
 **1. Higher Occupancy (+15.66%): 85.61% -> 99.02%**
 
   - Why this happened:
-    - The naive kernel uses 781,250 blocks at 256 threads each to process all 200,000,000 elements. This means there is likely some overhead due to the number of blocks we launch that prevents each SM from fully occupying the maxmimum 6 active blocks per SM, which is mentioned in the Achieved Occupancy section under the Nsight Compute Analysis for the Naive kernel. In the grid stride kernel however, we launch 144 blocks which one both this block overhead faced in the naive kernel, but also perfectly fits in the 24 SMs which fit 6 active blocks each.
+    - The naive kernel uses 781,250 blocks at 256 threads each to process all 200,000,000 elements. This means there is likely some overhead due to the number of blocks we launch that prevents each SM from fully occupying the maxmimum 6 active blocks per SM, which is mentioned in the Achieved Occupancy section under the Nsight Compute Analysis for the Naive kernel. In the grid stride kernel however, we launch 144 blocks, which both reduces this block overhead faced in the naive kernel and also perfectly fits faced in the naive kernel, but also perfectly fits in the 24 SMs which fit 6 active blocks each.
 
 <h3>Why It's Still Slower</h3>
 
@@ -534,7 +534,7 @@ The Grid Stride + Vectorized kernel is effectively slower than the naive because
 <h3>Current Theory</h3>
 
 1A. Executed Instruction per Cycle (-16.89%) 0.22 -> 0.19<br>
-1B. Eligible Warps per Scheduler (+0.17%) 0.06% -> 0.07%
+1B. Eligible Warps per Scheduler (+0.17%) 0.06 -> 0.07
    - What this means:
      - With my current mental model, these two statistics point out as interesting to me, and I think at the moment they may show something positive despite a reduced IPC often meaning the kernel is less performative. To start from the beginning, vector add is a memory bound kernel, this means to squeeze out more performance from my current understanding we have the following avenues to pursue
        - Increase parallelism to increase latency hiding by increasing the number of eligible warps per scheduler
