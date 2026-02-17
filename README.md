@@ -573,14 +573,17 @@ $$ T_{Compute} = \frac{\text{Total FLOPs}}{\text{Peak FLOPS}} $$
 
 $$ \text{Peak FLOPS} = \text{CUDA Cores} \times \text{Clock Speed} \times 1 \text{ (Two if Fused Multiply Add)} $$
 
-> NVIDIA GPUs specifically perform Fused Multiply Add operations faster than regular operations due to hardware specific considerations. This is amazing because if we go back to our knowledge of neural networks, the fundamental equation used across almost most of the steps of neural networks is weight * input + bias. I also believe even the most basic perceptron also uses the same equation!
+> NVIDIA GPUs can specifically perform the Fused Multiply Add operation in a single cycle!. This is amazing because if we go back to our knowledge of neural networks, the fundamental equation used across neural networks is weight * input + bias. I also the origin of the neural network, the perceptron, uses the same equation! One could assume that the hardware was specifically tailored for this exact equation and purpose!
 
 Given the total FLOPs performed, divided by the peak theoretical FLOPS of our cores, we can estimate the theoretical duration of the kernel if its Compute Bound in milliseconds.
 
 <h3>C. Latency Bound </h3>
 
+$$ \text{Efficiency}_{Latency} = \min\left(\frac{\text{Bytes in Flight}}{\text{Bytes in Flight Needed}}, 1.0\right) $$
 
+$$ \text{Bytes in Flight} = \text{Total Warps} \times \text{Concurrent Memory Requests per Warp} \times \text{Bytes per Request} $$
 
+$$ \text{Bytes in Flight Needed} = \text{Peak Bandwidth} \times \text{DRAM Latency} $$
 
 
 
