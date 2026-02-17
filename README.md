@@ -531,6 +531,35 @@ What this tells me is the following:
 
 
 
+<h1>What I learned</h1>
+
+<h2>Vector Add</h2>
+The vector add kernel is memory bound. Any optimizations to be made to improve the kernels run time must address this. Any optimization that does not will often add needless overhead.
+
+<h2>Nsight Compute</h2>
+Now this was one of the most enjoyable parts of this project. While at first this project started as a way to learn grid stride, vectorization and ILP, it slowly became a vehicle to understand how memory bound kernels operate.<br><br>
+
+From this project I learned:
+- When the write we commit to the L2 cache does not modify the entire 32 byte sector, the L2 cache must read the DRAM sector first before writing to the DRAM. I find this implicit read, and the process it took for me to discover it genuinely enjoyable and exciting. The idea of having this niche detail in my mental model excites me for the future when I will be able to use it. I can already imagine during say sparse writes, knowing this is the difference between performing a single write instruction, or a read followed by a write.
+  
+- Another thing I enjoyed learning about was the intentionality of the hardware. In past projects where I've built things like full stack applications to ML models, there has always been a layer of abstraction that has prevented me from digging deep in to finding out why something worked the specific way that it did. When it comes to CUDA and low level systems work, quite literally everything has a reason. Whether that be why the cache line is 128 bytes, and how it perfectly fits 4 sectors of the DRAM, or the reason why float4 is so spectacular is because its the perfect tipping point where we can maximize the 128 bit register file using a single LDG.128 instruction, it all has a reason.
+
+  The L2 cache investigation took me two days, and then a few days later I had realized I was wrong and I had to spend another day understanding why. While this might seem mundane at first, being able to connect how the software beautifully uses the hardware to maximize throughput has genuinely, without a single doubt, been the best computer science experience as a undergraduate student. While I have not taken a parallel programming class, so I am unsure about the exact depth of which these many layers interact, and how we can use them to our advantage, I have no doubt that learning and updating my mental model will genuinely be enjoyable.
+
+  The funny thing is the night before I figured this out, I remember thinking all of the possiblities of why the L2 cache policy was the way it was, and I remember finding the arXiv article and all the dots suddenly connecting. This quite literally made me so estatic that I made sure to write "holy macroni" in this github readme so I wouldn't forget that hey! lets test this theory in the morning, it actually might be the reason why your seeing the numbers your seeing! 
+
+
+<h1>What I Would Do Differently</h1>
+
+If I were to restart this vector add proejct from scratch with the knowledge I have now (or any project from now on) this would be my process:
+
+1. I would disect the vector add equation itself before I even think to write a single piece of code. This gives me the theoretical FLOPs/byte. This is important because before we even start, we should understand what our expected bottlenecks will be.
+
+- For vector add we concluded that it performs two reads (A and B) a single write (C) and performs a single floating point operation (add). This results in a FLOPs/byte of 0.08, which between compute and memory bound, this tells us our kernel is memory bound.
+
+- While this provides a great insight into what our bottleneck might be between compute and memory, it turns out theres a even sneakier possible bottleneck. It turns out another potential bottleneck is actually latency! Latency bound is when the number of instructions being performed is significantly more than the L2 cache can handle. From my current understanding, this results in the write-back buffer in the L2 cache to be very convoluted to the point where if the write buffer is full, the L2 cache has to stop all reads and write warps to evict all of the dirty cache lines.
+
+2. Once the equation is analyzed, I would do the following which I recently learned about. This process is a lot more complicated (which makes it alot more interesting), but offers a significant view into our kernel.
 
 
 
