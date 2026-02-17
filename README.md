@@ -79,15 +79,13 @@ _Increased register pressure can lead to lower occupancy, if register count per 
 | Grid Stride + Vec + ILP=2 | 86.30% (+/- 4.84%)     | 86.05% (+/- 0.46%)     | 85.94% (+/- 0.36%)     |
 | Grid Stride + Vec + ILP=4 | 86.27% (+/- 4.53%)     | 85.73% (+/- 0.60%)     | 85.85% (+/- 0.38%)     |
 
-<h1>Analysis & Interpretation</h1>
 
-<h2>Overview</h2>
-Throughout all three trials, the kernels all performed within 1-3% of each other despite changing input sizes. This suggests the additional optimization methods applied do not play a significant role in improving on the naive kernel for vector addition. 
-<br><br>
-To keep analysis focused and to avoid noise from measurement variance, all kernel specific interpetations will focus on the 200M element trials which showed the lowest standard deviation.
-<br><br>
 
-<h2>A Deeper Dive into Vector Addition</h2>
+
+
+
+
+<h1>A Deeper Dive into Vector Addition</h1>
 To better understand the performance of each of the optimization techniques, an analysis into the vector addition operation itself provides a great starting point.
 
 <br>
@@ -104,25 +102,10 @@ $$ \text{Arithmetic Intensity} (AI) = \frac{\text{Total Operations (FLOPs)}}{\te
 
 The result after plugging in the values results is $$0.08 \text{ } \frac{\text{FLOPs}}{\text{Byte}}$$, when compared to the arithmetic intensity of the RTX 4060 ($$55 \text{ } \frac{\text{FLOPs}}{\text{Byte}}$$), the value is significantly lower which implies the operation is memory bound. This along with the consistent 80% to 90% DRAM bandwidth usage across all techniques and n sizes suggests this kernel is memory bound.
 
-<h2>Naive Kernel</h2>
-The naive kernel set a strong baseline in the trial with coalesced memory access and minimal instructional overhead (only one if statement). Each thread loads 2 elements, does one floating point operation, and stores 1 element. <br><br>
 
-Because vector addition operation has a very low arithmetic intensity, and the naive kernel has a low register count of 16 which allows for more parallelism, the naive kernel already saturates the DRAM bandwidth, achieving a memory throughput of ~236 GB/s which is ~87% of the peak bandwidth without any optimizations. Any optimization to this kernel would have to reduce memory traffic through techniques like lower precision, caching or kernel fusing, the latter two not being possible with a simple kernel like this one.
 
-<h2>Grid Stride</h2>
-Grid stride detaches the 1 thread to 1 element ratio found in the naive kernel, allowing it to run on any GPU and scale to any n size. In this case, grid stride provided an unnecessary instructional overhead as well as increased register pressure. <br><br>
 
-Because the orginial kernel was memory bound, the extra instructions and register pressure simply added overhead resulting in a 1-3% decrease in memory throughput. Grid stride is still a very effective technique that allows the kernel to scale, but not effective in raw performance for a memory bound kernel.
 
-<h2>Vectorization</h2>
-Vectorization (float4) reduces the memory instructions to the DRAM by having a single thread call for 4 floats at once, rather in the naive where a thread calls for a single float.
-
-Although Vectorization is more efficient when it comes to memory instructions, it does not tackle the memory bound nature of the kernel. The kernel does perform at a similar level as the naive likely because the only additional instructional overhead is in the tail end of the kernel.
-
-<h2>Instruction Level Parallelism</h2>
-Instruction Level Parallelism allows for latency hiding by issuing multiple independent memory transactions at the same time. This allows the arithmetic operations to take place while the memory from the DRAM is already traveling to the thread for the next arithmetic operation.<br><br>
-
-While ILP provides latency hiding, it does not tackle the memory bound nature of the kernel. The kernel performs slightly worse than the naive likely due to the increased instructional overhead.<br><br>
 
 <h1>Nsight Compute Findings</h1>
 
@@ -342,17 +325,6 @@ The reason why I believe the hit rate of write is always a 100% is because no ma
   - Why this happened:
     - This is a direct cause of the decreased number of blocks from the naive. While we increase occupancy to 99.02%, we effectively remove the kernels ability to latency hide using other warps. Where say a warp stalls on a memory request, in the naive kernel the scheduler is able to switch to another warp to continue actively working, but in the grid stride kernel there is simply not enough warps that are not stalled to switch to.
 
-<h3>Why Grid Stride + Vectorized is Slower than the Naive</h3>
-The grid stride kernel performs slower than the naive because while it improves occupancy, it significantly decreases the kernels ability to latency hide with other warps. When it comes to memory bound kernel, being able to latency hide is often a great approach to allow the SM to switch to other warps while the current is waiting for data to arrive.
-<br><br><br><br><br><br>
-
-
-
-
-
-
-
-
 
 
 
@@ -447,19 +419,6 @@ While float8 is not supported in CUDA, so our earlier float8 analysis is just th
 
 
 
-<h3>Why Vectorized is Slower than the Naive</h3>
-Despite Vectorization reducing the amount of instructions required to recieve data, it does not tackle the core problem of the vector add kernel. Vector add is inherinently memory bound, and from my current understanding the way we can improve a memory bound kernel is by either increasing parallelism through more warps, decreasing memory dependency chains which is not possible with vector add due to its simplicity and I would also assume decreasing computational complexity, which is also not possible due to the same reason. <br><br>
-
-Vectorization actually decreases parallelism in this case, not because of the technique itself, but rather because to ensure all elements are computed and nothing more or less is done, we must launch n/4 threads. This means less threads, resulting in less warps, resulting in less blocks which means less blocks for the SM to switch to during stalls.
-
-While the following may be true, both the Naive and Vectorized kernels perform at a similar speed with a similar standard deviation. It can be assumed that the SM frequency at a given time will determine with kernel will outperform the other.
-
-
-
-
-
-
-
 
 
 
@@ -510,8 +469,7 @@ While the following may be true, both the Naive and Vectorized kernels perform a
      - Vectorization: The reason why Vectorization plays a role in reducing the elgible warps is because of the required tail handling for when the data is not divisible by 4. This tail handling makes each warp to stall for longer, which means the scheduler will have even less warps to switch to as every warp will stall for a longer duration.
      >Note: Vectorization allows for 4 floats per single memory instruction. This will result in fewer warps in flight meaning a decrease in the number of eligible warps the scheduler is able to switch to.
 
-<h3>Why Grid Stride + Vectorized is Slower than the Naive</h3>
-The Grid Stride + Vectorized kernel is effectively slower than the naive because the grid stride significantly decreases the parallelism of the kernel by reducing the number of warps available that the scheduler can switch to, and the tail handling of the Vectorization increases the stall duration of each of those warps. While the kernel still remains memory bound, these techniques increase the latency of each warp, effectively slowing down the kernel compared to the naive version.
+
 
 
 
