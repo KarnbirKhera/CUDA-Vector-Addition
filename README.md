@@ -187,7 +187,7 @@ From the following SASS panel for the naive kernel we see a "Store to Global Mem
 - When writing to DRAM, if cache HIT: A single write instruction
 - When writing to DRAM, if cache MISS: A single read instruction, followed later by a write instruction
 
-> Note: I later discovered this model was incomplete. The next section "Revisting the L2 Cache Write Behavior" depicts the behavior more accurately.
+> _Note: I later discovered this model was incomplete. The next section "Revisting the L2 Cache Write Behavior" depicts the behavior more accurately._
 
 For this kernel we have a single 4 byte float write per thread, on a warp scale this results in a perfect 128 byte write to the 128 byte cache line. This means for every new warp write, there is a very high likelyhood the required four 32 byte sectors in the DRAM are not in the L2 cache. This means every warp write will result in a cache line miss, because of this the kernel is required to do a DRAM read of the four 32 byte sectors in the DRAM before writing. This is supported by following images where the L2 lts__t_sectors_op_read.sum is 1,538,775, and in the Nsight compute kernel we have a total sector misses to device of 1,508,103, this eludes these L2 cache misses result in a signfiicant amount of reads made by the kernel. This GPU behavior of cache miss resulting in a read is supported by the following NVIDIA post https://forums.developer.nvidia.com/t/how-do-gpus-handle-writes/58914/5.
 
