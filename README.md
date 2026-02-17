@@ -30,7 +30,7 @@ specific optimization techniques. This project was also very good for me to lear
 
 Tradeoff of each Technique:
 - Naive: Requires one thread per element, difficult to scale across various GPUs and large n size.
-- Grid-stride: Increased register pressure. Can provide un-necessary overhead if threads > n. In large datasets, can break warp locality to due large stride size.
+- Grid-stride: Increased register pressure. Can provide un-necessary overhead if threads > n. In large datasets.
 - Vectorization (float4): Increased register pressure, requires 16 byte alignment, increases coalescing complexity, can require tail handling if n is not divisble by 4.
 - Instructional Level Parallelism: Increased register pressure, increases coalescing complexity.
 
@@ -567,10 +567,6 @@ What this tells me is the following:
   - The specific part of my theory that failed was the assumption that ILP could combat the memory bound nature of vector add by increasing parallelism at the instruction level. To update my mental model based off this experiment I would say while we may increase the instruction level parallelism of the kernel, if a warp is stalled and the SM is unable to switch another warp that is not, the kernel still faces the exact same problem as the naive even if we allow parallelism at the instruction level. <br><br><br><br>
 
 
-
-
-
-Holy moly macroni
 
 
 
