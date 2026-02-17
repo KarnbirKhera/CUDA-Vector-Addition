@@ -187,6 +187,8 @@ From the following SASS panel for the naive kernel we see a "Store to Global Mem
 - When writing to DRAM, if cache HIT: A single write instruction
 - When writing to DRAM, if cache MISS: A single read instruction, followed later by a write instruction
 
+> Note: I later discovered this model was incomplete. The next section "Revisting the L2 Cache Write Behavior" depicts the behavior more accurately.
+
 For this kernel we have a single 4 byte float write per thread, on a warp scale this results in a perfect 128 byte write to the 128 byte cache line. This means for every new warp write, there is a very high likelyhood the required four 32 byte sectors in the DRAM are not in the L2 cache. This means every warp write will result in a cache line miss, because of this the kernel is required to do a DRAM read of the four 32 byte sectors in the DRAM before writing. This is supported by following images where the L2 lts__t_sectors_op_read.sum is 1,538,775, and in the Nsight compute kernel we have a total sector misses to device of 1,508,103, this eludes these L2 cache misses result in a signfiicant amount of reads made by the kernel. This GPU behavior of cache miss resulting in a read is supported by the following NVIDIA post https://forums.developer.nvidia.com/t/how-do-gpus-handle-writes/58914/5.
 
 After looking into this even more, I found that this read write policy is very intentional and is actually fundamental to the hardware/software co-design of not just the RTX 4060, but for all modern GPUs. The reason for this read write policy is very interesting because it solves a problem that before this I had never even thought of.
@@ -233,6 +235,8 @@ The naive STG.E kernel produced a very consistent DRAM and L2 cache throughput. 
 
 The naive cached stream kernel produced a very "bursty" DRAM and L2 cache throughput. This is because when using cached stream policy (STG.E.EF), as soon as a cache line is dirty (data is modified), the cache line is marked to be evicted. This means when a new cache line is needed, the write back queue to the DRAM fills very quickly, faster than the memory controller can drain between reads. Once the DRAM write bandwidth reaches a threshold, the write back queue is drained by batch writing into the DRAM. We can observe this by the peaks followed by the trough pattern in the DRAM Write Bandwidth row. When the write queue is draining to the DRAM, any warp that needs to write or read will likely stall, whereas any warp performing compute will be uneffected. I'd imagine this is very useful for batched computations for things like FlashInfer where the KV cache is calculated by pages/batches (although I have yet to implement any sort of attention, this is a hypothesis).
 <br><br><br>
+
+
 
 
 
