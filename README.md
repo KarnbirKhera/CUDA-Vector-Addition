@@ -607,7 +607,7 @@ $$ \text{Bytes in Flight Needed} = \text{Peak Bandwidth} \times \text{DRAM Laten
 
 
 
-<h3>L2 Cache Bandwidth Bound</h3>
+<h3>D. L2 Cache Bandwidth Bound</h3>
 Can the L2 cache feed data to the SMs fast enough, or is it a bottleneck?<br><br>
 
 $$ T_{L2} = \frac{\text{Total Bytes through L2}}{\text{L2 Bandwidth}} $$
@@ -617,8 +617,8 @@ $$ T_{L2} = \frac{\text{Total Bytes through L2}}{\text{L2 Bandwidth}} $$
 
 
 
-<h3>Load/Store Unit Throughput Bound</h3>
-Can the Load Store Unit used 
+<h3>E. Load/Store Unit Throughput Bound</h3>
+Can the Load Store Unit in each SM, which translates memory instructions to actual memory requests, issue them fast enough to generate all the required reads and writes for the kernel? (milliseconds)
 
 $$ T_{LSU} = \frac{\text{Total Warp Memory Instructions}}{\text{LSU Issue Rate}} $$
 
@@ -628,6 +628,30 @@ $$ \text{LSU Issue Rate} = \text{LSUs per SM} \times \text{Num SMs} \times \text
 
 
 
+
+
+
+<h3>F. Instruction Issue Bound</h3>
+
+$$ T_{Issue} = \frac{\text{Total Warp Instructions}}{\text{Warp Instruction Issue Rate}} $$
+
+$$ \text{Warp Instruction Issue Rate} = \text{Schedulers per SM} \times \text{Num SMs} \times \text{Clock Speed} $$
+
+
+
+
+
+
+
+
+
+<h3>Theoretical Runtime</h3>
+
+
+$$ T_{Kernel} = \max(T_{DRAM},\ T_{Compute},\ T_{L2},\ T_{LSU},\ T_{Issue}) $$
+
+
+$$ \text{Arithmetic Intensity} (AI) = \frac{\text{Total Operations (FLOPs)}}{\text{Total Bytes Transferred (Memory Traffic)}} $$
 
 <h3>Hardware</h3>
 On current GPU (RTX 4060):<br>
