@@ -7,7 +7,7 @@ specific optimization techniques. This project was also very good for me to lear
 
 <h1>Goals of the Project</h1>
 - Understand how different CUDA kernel designs affect performance <br>
-- Explore grid-stride loops, vectorization and instructional level parallelism (ILP)<br>
+- Explore grid-stride loops, Vectorization and Instruction Level Parallelism (ILP)<br>
 - Learn how register pressure affects occupancy<br>
 - Learning to read NVIDIA Nsight Compute to understand kernels at a deeper level<br>
 - Compare theoretical vs measured memory bandwidth<br>
@@ -26,13 +26,13 @@ specific optimization techniques. This project was also very good for me to lear
 - Naive: establishes a clean baseline with perfect coalescing. 1 thread to 1 element ratio<br>
 - Grid‑stride: Allows kernel to scale using fixed number of blocks per grid while maintaing coalescing. Hardware-aware<br>
 - Vectorized (float4): Allows warp to request 512 bytes per cycle versus naive's 128 bytes, decreasing the required memory instruction to DRAM. 1 thread to 4 element ratio.<br>
-- Instructional Level Parallelism: Each thread issues multiple independent memory requests, allowing for computation as these requests come in to reduce latency.
+- Instruction Level Parallelism: Each thread issues multiple independent memory requests, allowing for computation as these requests come in to reduce latency.
 
 Tradeoff of each Technique:
 - Naive: Requires one thread per element, difficult to scale across various GPUs and large n size.
 - Grid-stride: Increased register pressure. Can provide un-necessary overhead if threads > n. In large datasets.
 - Vectorization (float4): Increased register pressure, requires 16 byte alignment, increases coalescing complexity, can require tail handling if n is not divisble by 4.
-- Instructional Level Parallelism: Increased register pressure, increases coalescing complexity.
+- Instruction Level Parallelism: Increased register pressure, increases coalescing complexity.
 
 **_Register pressure note:_**<br>
 _Increased register pressure can lead to lower occupancy, if register count per thread excedes hardware maximum, register spills into slower L2 cache. In this case, an RTX 4060 has a maximum register per thread count of 255._
@@ -115,16 +115,12 @@ Grid stride detaches the 1 thread to 1 element ratio found in the naive kernel, 
 Because the orginial kernel was memory bound, the extra instructions and register pressure simply added overhead resulting in a 1-3% decrease in memory throughput. Grid stride is still a very effective technique that allows the kernel to scale, but not effective in raw performance for a memory bound kernel.
 
 <h2>Vectorization</h2>
-Vectorization (float4) reduces the memory instructions to the DRAM by having a single thread call for 4 floats at once, rather in the naive where a thread calls for a single float utilizing only 4 bytes out of 32 bytes provided by the request. Float4 vectorization allows perfect utilization of this minimum 32 byte memory transaction from the DRAMs 32 byte sectors.
+Vectorization (float4) reduces the memory instructions to the DRAM by having a single thread call for 4 floats at once, rather in the naive where a thread calls for a single float.
 
-> <p align="center">A note from future self</p>
-> My prior vectorization explanation makes it sound like the naive is uncoalesced, but on a warp scale where instructions are issued, the naive coalesces to 128 bytes whereas the vectorized coalesces to 512 bytes.
-<br><br>
+Although Vectorization is more efficient when it comes to memory instructions, it does not tackle the memory bound nature of the kernel. The kernel does perform at a similar level as the naive likely because the only additional instructional overhead is in the tail end of the kernel.
 
-Although vectorization is more efficient when it comes to memory instructions, it does not tackle the memory bound nature of the kernel. The kernel does perform at a similar level as the naive likely because the only additional instructional overhead is in the tail end of the kernel.
-
-<h2>Instructional Level Parallelism</h2>
-Instructional Level Parallelism allows for latency hiding by issuing multiple independent memory transactions at the same time. This allows the arithmetic operations to take place while the memory from the DRAM is already traveling to the thread for the next arithmetic operation.<br><br>
+<h2>Instruction Level Parallelism</h2>
+Instruction Level Parallelism allows for latency hiding by issuing multiple independent memory transactions at the same time. This allows the arithmetic operations to take place while the memory from the DRAM is already traveling to the thread for the next arithmetic operation.<br><br>
 
 While ILP provides latency hiding, it does not tackle the memory bound nature of the kernel. The kernel performs slightly worse than the naive likely due to the increased instructional overhead.<br><br>
 
@@ -204,6 +200,9 @@ Say we have the following scenario where both SM One and SM Two are writing to t
 
 The in-efficiency lies where the DRAM's single row buffer does not allow the full strength of parallel programming to shine, and this is where the L2 cache comes in. The way the L2 cache works is the following:
 
+> Note from future self:
+> Each memory bank in the DRAM has its own row buffer, not a single row buffer for the entire DRAM.
+
 - SM One: Writes to L2 cache with a single value, targeted at memory sector A in the DRAM
 - SM Two: Writes to L2 cache with a single value, targeted at memory sector B in the DRAM
 - SM One: Writes to L2 cache with a single value, targeted at memory sector A in the DRAM
@@ -216,7 +215,7 @@ Rather than needing to re-open cache lines, the L2 cache gathers all the needed 
 
 Now going back to the STG.E, it turns out after more research the .E is actually a modifier for the STG command when it comes to the caching policy. The .E represents that this data will follow a normal replacement policy, meaning it is neither elevated to be removed first, or elevated to be kept. This adds an interesting layer of granularity because while we cannot change the fundamental nature of the read write structure, we can although modify the L2 cache policy of the data we send.
 
-Looking at vector add kernel, we know that the entire process itself is purely streamed data, meaning data is loaded once, and never used or needed again. We can actually modify this cache policy with a ".cs" modifier which hints to the PTX to SASS compiler that the data is not needed once used, allowing it to be evicted first, which should in theory in-directly allow for more data to flow through the L2 cache. The reason this would theoretically allow more data to flow is because the default cache policy evicts the oldest or least recently used, but using the ".cs" should save the compiler time and compute as it does not need to find/calculate the oldest cache line. 
+Looking at vector add kernel, we know that the entire process itself is purely streamed data, meaning data is loaded once, and never used or needed again. We can actually modify this cache policy with a ".cs" modifier which hints to the PTX to SASS compiler that the data is not needed once used, allowing it to be evicted first, which should in theory in-directly allow for more data to flow through the L2 cache. The reason this would theoretically allow more data to flow is because the default cache policy evicts the oldest or least recently used, but using the ".cs" should save the kernel time and compute as it does not need to find/calculate the oldest cache line. 
 
 However, I would imagine this comes at a cost of having to "tag" or use meta-data to convey to the compiler that this specific cache line can be evicted first. I would once again imagine, when n is low the cost of adding this "tag" would likely overweigh its need, whereas if we have a large n size, the "tag" overhead becomes minimial.
 
@@ -314,7 +313,7 @@ Circling back to the origin of this investigation which was why vector add had a
 
 >Note in the section before, I isolate the vector add kernel into their read and write variants isolated. After looking back now with the experience I have reading Nsight compute, I can see that even the orginial vector add kernel was hinting that the write hit rate was a 100% using the lts__t_sector_op_write_hit_rate.pct metric, meaning we did not need to isolate those variants. None the less, the process itself was very fun even if it might have been not been needed.
 
-The reason why I believe the hit rate of write is always a 100% is because no matter what case we hit, whether that be coalesced or uncoalesced access, the write action is always performed. This means once the kernel sends the write request and it reaches the L2 cache, the write always has a way to reach the required DRAM sector.
+The reason why I believe the hit rate of write is always a 100% is because no matter what case we hit, whether that be coalesced or uncoalesced access, the L2 will always allocate a sector locally on a write. This means once the kernel sends the write request and it reaches the L2 cache, the write always has a way to reach the required DRAM sector.
 
 
 
@@ -334,7 +333,7 @@ The reason why I believe the hit rate of write is always a 100% is because no ma
 **1. Higher Occupancy (+15.66%): 85.61% -> 99.02%**
 
   - Why this happened:
-    - The naive kernel uses 781,250 blocks at 256 threads each to process all 2,000,000 elements. This means there is likely some overhead due to the number of blocks we launch that prevents each SM from fully occupying the maxmimum 6 active blocks per SM, which is mentioned in the Achieved Occupancy section under the Nsight Compute Analysis for the Naive kernel. In the grid stride kernel however, we launch 144 blocks which one reduces this block overhead faced in the naive kernel, but also perfectly fits in the 24 SMs which fit 6 active blocks each.
+    - The naive kernel uses 781,250 blocks at 256 threads each to process all 200,000,000 elements. This means there is likely some overhead due to the number of blocks we launch that prevents each SM from fully occupying the maxmimum 6 active blocks per SM, which is mentioned in the Achieved Occupancy section under the Nsight Compute Analysis for the Naive kernel. In the grid stride kernel however, we launch 144 blocks which one reduces this block overhead faced in the naive kernel, but also perfectly fits in the 24 SMs which fit 6 active blocks each.
 
 <h3>Why It's Still Slower</h3>
 
@@ -373,9 +372,9 @@ The grid stride kernel performs slower than the naive because while it improves 
 1. **Significant Decrease in Executed Instructions (-59.37%): 200,000,000 -> 40,625,063**
 
   - Why this happened:
-    - This is the direct reason why when it comes to reducing instructions, why vectorization is such a great tool. Rather than a single thread requesting a single float, we request for 4 floats at once using a single memory request. At first when I learned about vectorization it seemed very inadvertent because while we request 4 floats with a single memory request, doesn't that mean we need to move 4x the amount of data therefore, likely take four times the amount of time? It turns out it actually takes nearly the exact amount of time, and the reason it does is actually very exciting and goes to the core of the GPU architecture.
+    - This is the direct reason why when it comes to reducing instructions, why Vectorization is such a great tool. Rather than a single thread requesting a single float, we request for 4 floats at once using a single memory request. At first when I learned about Vectorization it seemed very inadvertent because while we request 4 floats with a single memory request, doesn't that mean we need to move 4x the amount of data therefore, likely take four times the amount of time? It turns out it actually takes nearly the exact amount of time, and the reason it does is actually very exciting and goes to the core of the GPU architecture.
     
-    - The reason why recieving 4 floats at once is very similar to the amount of time it takes to recieve a single float is because of the way the DRAM's architecture is setup. When we request a single 4 byte float, we are essentially eating the cost of reading the DRAM sector for just a 1/4th of the data it holds, although note in reality instructional commands are executed at the warp level so we would actually use all 32 bytes in said sector. When we use vectorization, we still eat the same cost of reading the DRAM sector, but we are using 16 bytes out of the 32 bytes that sector holds so we are essentially getting more data per read, and again at a warp level we are actually using all of the data contained within this DRAM sector.
+    - The reason why recieving 4 floats at once is very similar to the amount of time it takes to recieve a single float is because of the way the DRAM's architecture is setup. When we request a single 4 byte float, we are essentially eating the cost of reading the DRAM sector for just a 1/4th of the data it holds, although note in reality instructional commands are executed at the warp level so we would actually use all 32 bytes in said sector. When we use Vectorization, we still eat the same cost of reading the DRAM sector, but we are using 16 bytes out of the 32 bytes that sector holds so we are essentially getting more data per read, and again at a warp level we are actually using all of the data contained within this DRAM sector.
 
 While understanding this, I thought why dont we use float8 instead? Because wouldn't 8 floats mean the thread would perfectly request 32 bytes of data, which perfectly fits the 32 byte DRAM sector using just a single memory request? The reasonining why this wouldn't be as efficient is again leads us back to the GPU architecture, specifically to the size of the 128 bit memory bus from the L1 cache to the registers.<br><br>
 
@@ -437,7 +436,7 @@ While float8 is not supported in CUDA, so our earlier float8 analysis is just th
 
 **1. Signfiicant Decrease in Eligible Warps Per Scheduler [warp] (-56.40%): 0.06 -> 0.03**
   - Why this happend:
-    - To use vectorization withinn this context where we do not use grid stride, we must launch n/4 threads. This means although the techinique itself does not reduce parallelism, to ensure we compute all the given elements and nothing less and nothing more, we must launch less warps compared to the naive which means less warps to switch to for the SM when one stalls.<br><br>
+    - To use Vectorization withinn this context where we do not use grid stride, we must launch n/4 threads. This means although the techinique itself does not reduce parallelism, to ensure we compute all the given elements and nothing less and nothing more, we must launch less warps compared to the naive which means less warps to switch to for the SM when one stalls.<br><br>
       
     > _Note: Vectorization itself does not reduce parallelism, rather without grid stride we must launch a quarter of the threads compared to the naive. This means the reduction in parallelism is because of the launch condition and not the technique itself._
     
@@ -445,12 +444,12 @@ While float8 is not supported in CUDA, so our earlier float8 analysis is just th
 
 
 <h3>Why Grid Stride + Vectorized is Slower than the Naive</h3>
-Despite vectorization reducing the amount of instructions required to recieve data, it does not tackle the core problem of the vector add kernel. Vector add is inherinently memory bound, and from my current understanding the way we can improve a memory bound kernel is by either increasing parallelism through more warps, decreasing memory dependency chains which is not possible with vector add due to its simplicity and I would also assume decreasing computational complexity, which is also not possible due to the same reason. <br><br>
+Despite Vectorization reducing the amount of instructions required to recieve data, it does not tackle the core problem of the vector add kernel. Vector add is inherinently memory bound, and from my current understanding the way we can improve a memory bound kernel is by either increasing parallelism through more warps, decreasing memory dependency chains which is not possible with vector add due to its simplicity and I would also assume decreasing computational complexity, which is also not possible due to the same reason. <br><br>
 
 
 Vectorization actually decreases parallelism in this case, not because of the technique itself, but rather because to ensure all elements are computed and nothing more or less is done, we must launch n/4 threads. This means less threads, resulting in less warps, resulting in less blocks which means less blocks for the SM to switch to during stalls.
 
-But honestly while the logic checks out to me, the performance of vectorization versus the naive is so similar, one could conclude that both kernels perform at the same level.
+But honestly while the logic checks out to me, the performance of Vectorization versus the naive is so similar, one could conclude that both kernels perform at the same level.
 
 
 
@@ -478,7 +477,7 @@ But honestly while the logic checks out to me, the performance of vectorization 
 1. Significant Instruction Reduction (-82.37%): 100M -> 17.5M
    - Why this happened:
      - Vectorization: Requests 4 floats with a single memory transaction, rather than four seperate memory transactions like in this naive, reducing the number of instructions.
-     - Grid Stride: Grid Stride allows for a significant reduction in executed instructions but a more implicit and interesting way. When we look at the source counter of the naive kernel, 18.75% of all instructions are executed because of the _int i = blockIdx.x * blockDim.x + threadIdx.x_, this allows to get the threads id relative to the block its in. The interesting thing is for our naive kernel has 200,000,000 threads, which means every single thread executing this. With grid stride though, we are using 144 threads which means a significant reduction in the number of times we need to calculate this, which is supported by the grid stride instructions executed source counter for this line being just 0.02%.
+     - Grid Stride: Grid Stride allows for a significant reduction in executed instructions but a more implicit and interesting way. When we look at the source counter of the naive kernel, 18.75% of all instructions are executed because of the _int i = blockIdx.x * blockDim.x + threadIdx.x_, this allows to get the threads id relative to the block its in. The interesting thing is for our naive kernel has 200,000,000 threads, which means every single thread executing this. With grid stride though, we are using 144 blocks which means a significant reduction in the number of times we need to calculate this, which is supported by the grid stride instructions executed source counter for this line being just 0.02%.
 
 
 2. Higher Occupancy (+7.80%): 85.36% -> 92.02%
@@ -502,11 +501,11 @@ But honestly while the logic checks out to me, the performance of vectorization 
 2. Reduction in Eligible Warps (-76.20%): 0.06 -> 0.02 warps
    - Why this happened:
      - Grid Stride: The use of grid stride effectively reduced the number of blocks from the naive's 781,250 to 144. While this 144 count allowed for better occupancy, this does not give the SM enough warps to switch to when one warp stalls for latency hiding. Latency hiding is important especially for memory bound kernels as it allows the scheduler to switch to different warps when the current one is stalled, this allows each SM to always be busy rather than stalling waiting on memory.
-     - Vectorization: The reason why vectorization plays a role in reducing the elgible warps is because of the required tail handling for when the data is not divisible by 4. This tail handling makes each warp to stall for longer, which means the scheduler will have even less warps to switch to as every warp will stall for a longer duration.
+     - Vectorization: The reason why Vectorization plays a role in reducing the elgible warps is because of the required tail handling for when the data is not divisible by 4. This tail handling makes each warp to stall for longer, which means the scheduler will have even less warps to switch to as every warp will stall for a longer duration.
      >Note: Vectorization allows for 4 floats per single memory instruction. This will result in fewer warps in flight meaning a decrease in the number of eligible warps the scheduler is able to switch to.
 
 <h3>Why Grid Stride + Vectorized is Slower than the Naive</h3>
-The Grid Stride + Vectorized kernel is effectively slower than the naive because the grid stride significantly decreases the parallelism of the kernel by reducing the number of warps available that the scheduler can switch to, and the tail handling of the vectorization increases the stall duration of each of those warps. While the kernel still remains memory bound, these techniques increase the latency of each warp, effectively slowing down the kernel compared to the naive version.
+The Grid Stride + Vectorized kernel is effectively slower than the naive because the grid stride significantly decreases the parallelism of the kernel by reducing the number of warps available that the scheduler can switch to, and the tail handling of the Vectorization increases the stall duration of each of those warps. While the kernel still remains memory bound, these techniques increase the latency of each warp, effectively slowing down the kernel compared to the naive version.
 
 
 
