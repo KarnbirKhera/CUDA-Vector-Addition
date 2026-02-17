@@ -555,6 +555,8 @@ If I were to restart this vector add project from scratch with the knowledge I h
 
 **1. I would disect the vector add equation itself before I even think to write a single piece of code. This gives me the theoretical FLOPs/byte. This is important because before we even start, we should understand what our expected bottlenecks will be.**
 
+$$ \text{Arithmetic Intensity} (AI) = \frac{\text{Total Operations (FLOPs)}}{\text{Total Bytes Transferred (Memory Traffic)}} $$
+
   - For vector add we concluded that it performs two reads (A and B) a single write (C) and performs a single floating point operation (add). This results in a FLOPs/byte of 0.08, which between compute and memory bound, this tells us our kernel is memory bound.
   
   - While this provides a great insight into what our bottleneck might be between compute and memory, it turns out theres a even sneakier possible bottleneck. It turns out another potential bottleneck is actually latency! Latency bound is when the number of instructions being performed is significantly more than the L2 cache can handle. From my current understanding, this results in the write-back buffer in the L2 cache to be very convoluted to the point where if the write buffer is full, the L2 cache has to stop all reads and write warps to evict all of the dirty cache lines.
@@ -617,8 +619,23 @@ $$ T_{L2} = \frac{\text{Total Bytes through L2}}{\text{L2 Bandwidth}} $$
 
 
 
-<h3>E. Load/Store Unit Throughput Bound</h3>
-Can the Load Store Unit in each SM, which translates memory instructions to actual memory requests, issue them fast enough to generate all the required reads and writes for the kernel? (milliseconds)
+
+
+<h3>E. Instruction Issue Bound</h3>
+Can the warp scheduler issue instructions (math, memory, control flow, etc) fast enough? (milliseconds)
+
+$$ T_{Issue} = \frac{\text{Total Warp Instructions}}{\text{Warp Instruction Issue Rate}} $$
+
+$$ \text{Warp Instruction Issue Rate} = \text{Schedulers per SM} \times \text{Num SMs} \times \text{Clock Speed} $$
+
+
+
+
+
+
+
+<h3>F. Load/Store Unit Throughput Bound</h3>
+Can the Load Store Unit in each SM, which only translates memory instructions to actual memory requests, issue them fast enough? (milliseconds)
 
 $$ T_{LSU} = \frac{\text{Total Warp Memory Instructions}}{\text{LSU Issue Rate}} $$
 
@@ -631,27 +648,41 @@ $$ \text{LSU Issue Rate} = \text{LSUs per SM} \times \text{Num SMs} \times \text
 
 
 
-<h3>F. Instruction Issue Bound</h3>
-
-$$ T_{Issue} = \frac{\text{Total Warp Instructions}}{\text{Warp Instruction Issue Rate}} $$
-
-$$ \text{Warp Instruction Issue Rate} = \text{Schedulers per SM} \times \text{Num SMs} \times \text{Clock Speed} $$
 
 
+<h3>G. Shared Memory Bandwidth Bound</h3>
+Can shared memory serve all the reads and writes required fast enough?
 
+$$ T_{SMEM} = \frac{\text{Total Shared Memory Transactions}}{\text{Shared Memory Bandwidth}} $$
 
-
+$$ \text{Shared Memory Bandwidth} = \text{Banks per SM} \times \text{Bytes per Bank per Cycle} \times \text{Clock Speed} \times \text{Num SMs} $$
 
 
 
 
-<h3>Theoretical Runtime</h3>
 
 
-$$ T_{Kernel} = \max(T_{DRAM},\ T_{Compute},\ T_{L2},\ T_{LSU},\ T_{Issue}) $$
 
 
-$$ \text{Arithmetic Intensity} (AI) = \frac{\text{Total Operations (FLOPs)}}{\text{Total Bytes Transferred (Memory Traffic)}} $$
+<h3>H. PCIe Transfer Bound</h3>
+Is the kernel wiating on data moving from the CPU and GPU, rather than actually computing?
+
+$$ T_{PCIe} = \frac{\text{Total Bytes Transferred (Host} \leftrightarrow \text{Device)}}{\text{PCIe Bandwidth}} $$
+
+
+
+
+
+
+
+
+
+<h3>I. Theoretical Runtime</h3>
+The slowest bottleneck determines the kernel's speed.
+
+$$ T_{Kernel} = \max(T_{DRAM},\ T_{Compute},\ T_{L2},\ T_{LSU},\ T_{Issue},\ T_{SMEM},\ T_{PCIe}) $$
+
+
 
 <h3>Hardware</h3>
 On current GPU (RTX 4060):<br>
