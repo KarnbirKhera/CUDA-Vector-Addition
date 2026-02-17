@@ -316,7 +316,7 @@ The reason why I believe the hit rate of write is always a 100% is because no ma
 **1. Higher Occupancy (+15.66%): 85.61% -> 99.02%**
 
   - Why this happened:
-    - The naive kernel uses 781,250 blocks at 256 threads each to process all 200,000,000 elements. This means there is likely some overhead due to the number of blocks we launch that prevents each SM from fully occupying the maxmimum 6 active blocks per SM, which is mentioned in the Achieved Occupancy section under the Nsight Compute Analysis for the Naive kernel. In the grid stride kernel however, we launch 144 blocks, which both reduces this block overhead faced in the naive kernel and also perfectly fits faced in the naive kernel, but also perfectly fits in the 24 SMs which fit 6 active blocks each.
+    - The naive kernel uses 781,250 blocks at 256 threads each to process all 200,000,000 elements. This means there is likely some overhead due to the number of blocks we launch that prevents each SM from fully occupying the maxmimum 6 active blocks per SM, which is mentioned in the Achieved Occupancy section under the Nsight Compute Analysis for the Naive kernel. In the grid stride kernel however, we launch 144 blocks, which reduces the block overhead faced in the naive kernel allowing for a higher occupancy per SM.
 
 <h3>Why It's Still Slower</h3>
 
