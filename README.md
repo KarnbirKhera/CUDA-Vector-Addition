@@ -35,14 +35,14 @@ Tradeoff of each Technique:
 - Instruction Level Parallelism: Increased register pressure, increases coalescing complexity.
 
 **_Register pressure note:_**<br>
-_Increased register pressure can lead to lower occupancy, if register count per thread excedes hardware maximum, register spills into slower L2 cache. In this case, an RTX 4060 has a maximum register per thread count of 255._
+_Increased register pressure can lead to lower occupancy, if register count per thread exceeds hardware maximum, register spills into slower L2 cache. In this case, an RTX 4060 has a maximum register per thread count of 255._
 
 <h1>Benchmark Methodology</h1>
 - Time elapsed measured using CUDA Events. This allowed accurate profiling of kernel runtime without launch overhead or other miscellaneous factors such SM clock frequency. <br>
 - Nsight compute uses for throughput measurements.<br>
 - Efficiency calculated by (Nsight Compute Throughput)/ 272.0, the maximum theoretical memory bandwidth for RTX 4060.
 <br>
-- For each input size, the respective kernel had three warmup runs, proceeded by 10 trials which were recorded.
+- For each input size, the respective kernel had three warmup runs, followed by 10 trials which were recorded.
 
 <h1>Benchmark Results</h1>
 
@@ -185,7 +185,7 @@ From the following SASS panel for the naive kernel we see a "Store to Global Mem
 
 > _Note: I later discovered this model was incomplete. The next section "Revisting the L2 Cache Write Behavior" depicts the behavior more accurately._
 
-For this kernel we have a single 4 byte float write per thread, on a warp scale this results in a perfect 128 byte write to the 128 byte cache line. This means for every new warp write, there is a very high likelyhood the required four 32 byte sectors in the DRAM are not in the L2 cache. This means every warp write will result in a cache line miss, because of this the kernel is required to do a DRAM read of the four 32 byte sectors in the DRAM before writing. This is supported by following images where the L2 lts__t_sectors_op_read.sum is 1,538,775, and in the Nsight compute kernel we have a total sector misses to device of 1,508,103, this eludes these L2 cache misses result in a signfiicant amount of reads made by the kernel. This GPU behavior of cache miss resulting in a read is supported by the following NVIDIA post https://forums.developer.nvidia.com/t/how-do-gpus-handle-writes/58914/5.
+For this kernel we have a single 4 byte float write per thread, on a warp scale this results in a perfect 128 byte write to the 128 byte cache line. This means for every new warp write, there is a very high likelyhood the required four 32 byte sectors in the DRAM are not in the L2 cache. This means every warp write will result in a cache line miss, because of this the kernel is required to do a DRAM read of the four 32 byte sectors in the DRAM before writing. This is supported by following images where the L2 lts__t_sectors_op_read.sum is 1,538,775, and in the Nsight compute kernel we have a total sector misses to device of 1,508,103, this suggests these L2 cache misses result in a signfiicant amount of reads made by the kernel. This GPU behavior of cache miss resulting in a read is supported by the following NVIDIA post https://forums.developer.nvidia.com/t/how-do-gpus-handle-writes/58914/5.
 
 After looking into this even more, I found that this read write policy is very intentional and is actually fundamental to the hardware/software co-design of not just the RTX 4060, but for all modern GPUs. The reason for this read write policy is very interesting because it solves a problem that before this I had never even thought of.
 
@@ -232,7 +232,7 @@ STG.E.EF (cached streaming)
 
 The naive STG.E kernel produced a very consistent DRAM and L2 cache throughput. This is because the default caching policy (STG.E) marks cache lines that are either the oldest or least used for eviction when a new cache line is needed. This naturally populates the write back queue to the DRAM slowly, allowing the write back queue to drain as needed between reads, keeping the queue at a steady level.
 
-The naive cached stream kernel produced a very "bursty" DRAM and L2 cache throughput. This is because when using cached stream policy (STG.E.EF), as soon as a cache line is dirty (data is modified), the cache line is marked to be evicted. This means when a new cache line is needed, the write back queue to the DRAM fills very quickly, faster than the memory controller can drain between reads. Once the DRAM write bandwidth reaches a threshold, the write back queue is drained by batch writing into the DRAM. We can observe this by the peaks followed by the trough pattern in the DRAM Write Bandwidth row. When the write queue is draining to the DRAM, any warp that needs to write or read will likely stall, whereas any warp performing compute will be uneffected. I'd imagine this is very useful for batched computations for things like FlashInfer where the KV cache is calculated by pages/batches (although I have yet to implement any sort of attention, this is a hypothesis).
+The naive cached stream kernel produced a very "bursty" DRAM and L2 cache throughput. This is because when using cached stream policy (STG.E.EF), as soon as a cache line is dirty (data is modified), the cache line is marked to be evicted. This means when a new cache line is needed, the write back queue to the DRAM fills very quickly, faster than the memory controller can drain between reads. Once the DRAM write bandwidth reaches a threshold, the write back queue is drained by batch writing into the DRAM. We can observe this by the peaks followed by the trough pattern in the DRAM Write Bandwidth row. When the write queue is draining to the DRAM, any warp that needs to write or read will likely stall, whereas any warp performing compute will be unaffected. I'd imagine this is very useful for batched computations for things like FlashInfer where the KV cache is calculated by pages/batches (although I have yet to implement any sort of attention, this is a hypothesis).
 <br><br><br>
 
 
@@ -251,7 +251,7 @@ While this does capture some of the naunces of the L2 cache, it over generalizes
 - lts__t_sectors_op_read.sum = 1,538,775
 - lts__t_sectors_op_write.sum = 25,000,362
 
-Lets start with why I thought my theory was correct. The 100% hit rate specifically for writes led me to believe that my old theory was true at the time where in either case a hit is always gaurenteed. The reason I believe my theory was wrong because of the latter two data points. <br>
+Lets start with why I thought my theory was correct. The 100% hit rate specifically for writes led me to believe that my old theory was true at the time where in either case a hit is always guaranteed. The reason I believe my theory was wrong because of the latter two data points. <br>
 
 If my prior theory was correct, for 25,000,362 sector writes, we would have approximately the same number of reads. This is because naive vector add is perfectly coalesced where a single warp will request to write 128 bytes, which perfectly fits 4 sectors in the DRAM. This means that in my old theory, we should see the same number of reads as the write because each warp will always need to call for new DRAM sectors to modify, but by looking at our data, 1.5M reads is significantly below 25M writes which implies the 1.5M must be some sort of overhead, and not related to the writes done by the L2.
 
@@ -267,7 +267,7 @@ Now our second source "Exploring Modern GPU Memory System Design Challenges thro
 - What write-valdiate does: When the L2 recieves a write, it doesn't fetch from DRAM. It instead writes the bytes directly into the sector (in the L2 cache) and sets the corresponding bits modified using a write mask, marking the written sector as valid and modified.
 - What happens at eviction: If the mask is full (all 32 bytes of the sector are written), the sector is written back to the DRAM without reading the sector beforehand. If the mask is partial, meaning the modified bytes were less than 32, then the missing bytes must first be read from the DRAM, then used to produce a complete write mask before writing to the DRAM.
 
-- This brings up the question that upon recieving a write request, does the L2 cache immediately read the DRAM, or does it wait until after the cache line is modifed and evicted? The researchers used the following experiment to answer this question. They first modified a few bytes in a sector, and then immediately afterwords, read the same sector which resulted in a miss in the L2 cache. This experiment proves that the L2 cache does not commit a read to the DRAM upon recieving a write, because if it had, the L2 sector would have resulted in a hit by the researchers.
+- This brings up the question that upon recieving a write request, does the L2 cache immediately read the DRAM, or does it wait until after the cache line is modifed and evicted? The researchers used the following experiment to answer this question. They first modified a few bytes in a sector, and then immediately afterwards, read the same sector which resulted in a miss in the L2 cache. This experiment proves that the L2 cache does not commit a read to the DRAM upon recieving a write, because if it had, the L2 sector would have resulted in a hit by the researchers.
 
 
 To confirm this theory using my own data, I did the following experiment with two write only kernels.
@@ -297,7 +297,7 @@ Uncoalesced Write Only:
   - **1.09 loads : 1 store**
 
 Coalesced Write Only Results:
-  - From the coalesced access results we can deduce the following. When writes are perfectly coalesced, the L2 cache has no reason to perform a read of the DRAM as the modified cache line already has a fully 32 byte valid write mask. Thus, the cache line can be properly evicted to the DRAM. This is supported by the low ratio of loads to stores, where one could conclude the 37,508 stores are likely an overhead of the kernel, and not related to the writes performed
+  - From the coalesced access results we can deduce the following. When writes are perfectly coalesced, the L2 cache has no reason to perform a read of the DRAM as the modified cache line already has a fully 32 byte valid write mask. Thus, the cache line can be properly evicted to the DRAM. This is supported by the low ratio of loads to stores, where one could conclude the 37,508 loads are likely an overhead of the kernel, and not related to the writes performed
 
 Uncoalesced WRite Only Results:
   - From the uncoalesced access results, we can deduce the following. When writes are not coalesced, the L2 cache has to perform a read into the DRAM for every incomplete sector we do not fully modify. This is supported by the near 1:1 ratio of loads to writes.
@@ -378,7 +378,7 @@ The grid stride kernel performs slower than the naive because while it improves 
 
 While understanding this, I thought why dont we use float8 instead? Because wouldn't 8 floats mean the thread would perfectly request 32 bytes of data, which perfectly fits the 32 byte DRAM sector using just a single memory request? The reasonining why this wouldn't be as efficient is again leads us back to the GPU architecture, specifically to the size of the 128 bit memory bus from the L1 cache to the registers.<br><br>
 
-If we were to use float8, that would mean each thread requires 8 (floats) * 4 (size of float) = 32 bytes, which converted to bits is 256 bits. This means for every thread, we would would need a very costly two read operations which is very in-efficient compared to float4 where we request 4 (floats) * 4 (size of float) = 32 bytes which is 128 bits, which only requires a single read transaction as it fits perfecetly within the L1 to register memory bus. This means the reason why float4 works so great is because we're balancing a fine line where we make sure to utilize all the data we can from a single DRAM read, while also making sure not to tip over into needing two costly DRAM reads. <br><br><br>
+If we were to use float8, that would mean each thread requires 8 (floats) * 4 (size of float) = 32 bytes, which converted to bits is 256 bits. This means for every thread, we would would need a very costly two read operations which is very in-efficient compared to float4 where we request 4 (floats) * 4 (size of float) = 16 bytes which is 128 bits, which only requires a single read transaction as it fits perfecetly within the L1 to register memory bus. This means the reason why float4 works so great is because we're balancing a fine line where we make sure to utilize all the data we can from a single DRAM read, while also making sure not to tip over into needing two costly DRAM reads. <br><br><br>
 
 <h3>Vectorization Width Analysis</h3>
 While float8 is not supported in CUDA, so our earlier float8 analysis is just theory, lets do deep dive into float, float2, float4 and the theoretical float8 to understand the best use case for each.
@@ -441,6 +441,10 @@ While float8 is not supported in CUDA, so our earlier float8 analysis is just th
     > _Note: Vectorization itself does not reduce parallelism, rather without grid stride we must launch a quarter of the threads compared to the naive. This means the reduction in parallelism is because of the launch condition and not the technique itself._
     
       <br><br>
+
+
+
+
 
 
 <h3>Why Grid Stride + Vectorized is Slower than the Naive</h3>
