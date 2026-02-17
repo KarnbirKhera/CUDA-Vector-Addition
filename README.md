@@ -562,21 +562,37 @@ If I were to restart this vector add project from scratch with the knowledge I h
 **2. Once the equation is analyzed, I would do the following which I recently learned about. This process is a lot more complicated (which makes it alot more interesting), but offers a significant theoretical view into our kernel.**
 
 <h3>A. DRAM Bandwidth Bound </h3>
-How long would the kernel take if the DRAM delivered bytes at its theoretical maximum speed (milliseconds)?
+How long would the kernel take if the DRAM delivered bytes at its theoretical maximum speed (milliseconds)?<br>
+
 
 $$ T_{DRAM} = \frac{\text{Total Bytes Transferred}}{\text{Peak DRAM Bandwidth}} $$
 
 
+
+
+
+
+
+
 <h3>B. Compute Bound </h3>
-How long would the kernel take if every core computed at its theoretical maximum (milliseconds)?
+How long would the kernel take if every core computed at its theoretical maximum (milliseconds)?<br><br>
+
 
 $$ T_{Compute} = \frac{\text{Total FLOPs}}{\text{Peak FLOPS}} $$
 
 $$ \text{Peak FLOPS} = \text{CUDA Cores} \times \text{Clock Speed} \times 1 \text{ (Two if Fused Multiply Add)} $$
 
+
 > NVIDIA GPUs can specifically perform the Fused Multiply Add operation in a single cycle!. This is amazing because if we go back to our knowledge of neural networks, the fundamental equation used across neural networks is weight * input + bias. I also believe the origin of the neural network, the perceptron, uses the same equation! One could assume that the hardware was specifically tailored for this exact equation and purpose!
 
+
+
+
+
+
+
 <h3>C. Latency Bound </h3>
+Are there enough memory requests in the pipeline right now to keep the DRAM busy, or is the DRAM idle?<br><br>
 
 $$ \text{Efficiency}_{Latency} = \min\left(\frac{\text{Bytes in Flight}}{\text{Bytes in Flight Needed}}, 1.0\right) $$
 
@@ -584,7 +600,6 @@ $$ \text{Bytes in Flight} = \text{Total Warps} \times \text{Concurrent Memory Re
 
 $$ \text{Bytes in Flight Needed} = \text{Peak Bandwidth} \times \text{DRAM Latency} $$
 
-Given Bytes in Flight, divided by the Bytes in Flight Needed, with a minimum function (
 
 
 
@@ -592,9 +607,24 @@ Given Bytes in Flight, divided by the Bytes in Flight Needed, with a minimum fun
 
 
 
+<h3>L2 Cache Bandwidth Bound</h3>
+Can the L2 cache feed data to the SMs fast enough, or is it a bottleneck?<br><br>
+
+$$ T_{L2} = \frac{\text{Total Bytes through L2}}{\text{L2 Bandwidth}} $$
 
 
 
+
+
+
+<h3>Load/Store Unit Throughput Bound</h3>
+Can the Load Store Unit used 
+
+$$ T_{LSU} = \frac{\text{Total Warp Memory Instructions}}{\text{LSU Issue Rate}} $$
+
+$$ \text{Total Warp Memory Instructions} = \frac{N \times \text{Memory Ops per Element}}{\text{Warp Size}} $$
+
+$$ \text{LSU Issue Rate} = \text{LSUs per SM} \times \text{Num SMs} \times \text{Clock Speed} $$
 
 
 
