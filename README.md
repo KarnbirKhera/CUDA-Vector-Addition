@@ -559,7 +559,7 @@ $$ \text{Arithmetic Intensity} (AI) = \frac{\text{Total Operations (FLOPs)}}{\te
 
   - For vector add we concluded that it performs two reads (A and B) a single write (C) and performs a single floating point operation (add). This results in a FLOPs/byte of 0.08, which between compute and memory bound, this tells us our kernel is memory bound.
   
-  - While this provides a great insight into what our bottleneck might be between compute and memory, it turns out theres a even sneakier possible bottleneck. It turns out another potential bottleneck is actually latency! Latency bound is when the number of instructions being performed is significantly more than the L2 cache can handle. From my current understanding, this results in the write-back buffer in the L2 cache to be very convoluted to the point where if the write buffer is full, the L2 cache has to stop all reads and write warps to evict all of the dirty cache lines.<br><br>
+  - While this provides a great insight into what our bottleneck might be between compute and memory, it turns out theres a even sneakier possible bottleneck. It turns out another potential bottleneck is actually latency! Latency bound is when the number of instructions being performed is significantly more than the L2 cache can handle. From my current understanding, this results in the write-back buffer in the L2 cache to be very convoluted to the point where if the write buffer is full, the L2 cache has to stop all reads and write warps to evict all of the dirty cache lines.<br><br><br><br><br><br>
 
 **2. Once the equation is analyzed, I would do the following which I recently learned about. This process is a lot more complicated (which makes it alot more interesting), but offers a significant theoretical view into our kernel.**
 
@@ -569,7 +569,14 @@ How long would the kernel take if the DRAM delivered bytes at its theoretical ma
 
 $$ T_{DRAM} = \frac{\text{Total Bytes Transferred}}{\text{Peak DRAM Bandwidth}} $$
 
-<br>
+Needed information to calculate:
+- **Kernel:** N, Reads per Element, Writes per Elements, sizeof(type)
+- **Hardware:** Peak DRAM bandwidth
+
+
+
+
+<br><br><br>
 
 
 
@@ -589,7 +596,9 @@ $$ \text{Peak FLOPS} = \text{CUDA Cores} \times \text{Clock Speed} \times 1 \tex
 
 
 
+
 <br><br><br>
+
 
 
 
@@ -603,7 +612,7 @@ $$ \text{Bytes in Flight} = \text{Total Warps} \times \text{Concurrent Memory Re
 $$ \text{Bytes in Flight Needed} = \text{Peak Bandwidth} \times \text{DRAM Latency} $$
 
 
-<br>
+<br><br><br>
 
 
 
@@ -616,7 +625,7 @@ $$ T_{L2} = \frac{\text{Total Bytes through L2}}{\text{L2 Bandwidth}} $$
 
 
 
-<br>
+<br><br><br>
 
 
 
@@ -630,7 +639,7 @@ $$ \text{Warp Instruction Issue Rate} = \text{Schedulers per SM} \times \text{Nu
 
 
 
-<br>
+<br><br><br>
 
 
 
@@ -646,7 +655,7 @@ $$ \text{LSU Issue Rate} = \text{LSUs per SM} \times \text{Num SMs} \times \text
 
 
 
-<br>
+<br><br><br>
 
 
 
@@ -661,7 +670,7 @@ $$ \text{Shared Memory Bandwidth} = \text{Banks per SM} \times \text{Bytes per B
 
 
 
-<br>
+<br><br><br>
 
 
 
@@ -673,7 +682,7 @@ $$ T_{PCIe} = \frac{\text{Total Bytes Transferred (Host} \leftrightarrow \text{D
 
 
 
-<br>
+<br><br><br>
 
 
 
@@ -684,6 +693,10 @@ The slowest bottleneck determines the kernel's speed.<br><br>
 $$ T_{Kernel} = \max(T_{DRAM},\ T_{Compute},\ T_{L2},\ T_{LSU},\ T_{Issue},\ T_{SMEM},\ T_{PCIe}) $$
 
 
+
+
+
+<br><br><br>
 
 <h3>Hardware</h3>
 On current GPU (RTX 4060):<br>
