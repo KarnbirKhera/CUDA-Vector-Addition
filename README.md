@@ -561,6 +561,24 @@ If I were to restart this vector add project from scratch with the knowledge I h
 
 **2. Once the equation is analyzed, I would do the following which I recently learned about. This process is a lot more complicated (which makes it alot more interesting), but offers a significant theoretical view into our kernel.**
 
+<h3>A. DRAM Bandwidth Bound </h3>
+
+$$ T_{DRAM} = \frac{\text{Total Bytes Transferred}}{\text{Peak DRAM Bandwidth}} $$
+
+Given the total bytes transferred, divided by the peak theoretical DRAM bandwidth, we can estimate the theoretical duration of the kernel if its DRAM Bandwidth bound in milliseconds.
+
+<h3>B. Compute Bound </h3>
+
+$$ T_{Compute} = \frac{\text{Total FLOPs}}{\text{Peak FLOPS}} $$
+
+$$ \text{Peak FLOPS} = \text{CUDA Cores} \times \text{Clock Speed} \times 1 \text{ (Two if Fused Multiply Add)} $$
+
+> NVIDIA GPUs specifically perform Fused Multiply Add operations faster than regular operations due to hardware specific considerations. This is amazing because if we go back to our knowledge of neural networks, the fundamental equation used across almost most of the steps of neural networks is weight * input + bias. I also believe even the most basic perceptron also uses the same equation!
+
+Given the total FLOPs performed, divided by the peak theoretical FLOPS of our cores, we can estimate the theoretical duration of the kernel if its Compute Bound in milliseconds.
+
+<h3>C. Latency Bound </h3>
+
 
 
 
