@@ -501,7 +501,7 @@ While the following may be true, both the Naive and Vectorized kernels perform a
        - **Note:** I believe in most vectorized kernels, the data is often padded by the host before being sent to the device, which would circumvent this problem completely. For the sake of learning why this is done in the first place, padding was not used.
 
   > Note from future self: <br><br>
-  > While both grid stride and vectorization played a role in increasing the Warp Cycles per Instruction, one could say that the drastic increase in cycles is likely because vectorization reduced the number of required warp cycles, but the stall time remained the same, hence a larger Warp Cycles Per Instruction value.
+  > Both vectorization and grid stride reduce the number of instructions by a factor of 6. While the kernel still faces the same long scoreboard stall (memory bound), the reduced number of instructions likely inflates the Warp Cycles per Instruction value.
 
    
 2. Reduction in Eligible Warps (-76.20%): 0.06 -> 0.02 warps
