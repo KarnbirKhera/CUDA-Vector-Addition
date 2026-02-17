@@ -437,7 +437,9 @@ While float8 is not supported in CUDA, so our earlier float8 analysis is just th
 
 **1. Signfiicant Decrease in Eligible Warps Per Scheduler [warp] (-56.40%): 0.06 -> 0.03**
   - Why this happend:
-    - To use vectorization withinn this context where we do not use grid stride, we must launch n/4 threads. This means although the techinique itself does not reduce parallelism, to ensure we compute all the given elements and nothing less and nothing more, we must launch less warps compared to the naive which means less warps to switch to for the SM when one stalls.<br><br>
+    - To use vectorization withinn this context where we do not use grid stride, we must launch n/4 threads. This means although the techinique itself does not reduce parallelism, to ensure we compute all the given elements and nothing less and nothing more, we must launch less warps compared to the naive which means less warps to switch to for the SM when one stalls.
+    > _Note: Vectorization itself does not reduce parallelism, rather without grid stride we must launch a quarter of the threads compared to the naive. This means the reduction in parallelism is because of the launch condition and not the technique itself._
+      <br><br>
 
 
 <h3>Why Grid Stride + Vectorized is Slower than the Naive</h3>
