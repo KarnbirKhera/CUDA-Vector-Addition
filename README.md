@@ -561,6 +561,13 @@ $$ \text{Arithmetic Intensity} (AI) = \frac{\text{Total Operations (FLOPs)}}{\te
   
   - While this provides a great insight into what our bottleneck might be between compute and memory, it turns out theres a even sneakier possible bottleneck. It turns out another potential bottleneck is actually latency! Latency bound is when the number of instructions being performed is significantly more than the L2 cache can handle. From my current understanding, this results in the write-back buffer in the L2 cache to be very convoluted to the point where if the write buffer is full, the L2 cache has to stop all reads and write warps to evict all of the dirty cache lines.<br><br><br><br><br><br>
 
+
+
+
+
+
+
+
 **2. Once the equation is analyzed, I would do the following which I recently learned about. This process is a lot more complicated (which makes it alot more interesting), but offers a significant theoretical view into our kernel.**
 
 <h3>A. DRAM Bandwidth Bound </h3>
@@ -595,7 +602,9 @@ $$ \text{Peak FLOPS} = \text{CUDA Cores} \times \text{Clock Speed} \times 1 \tex
 > NVIDIA GPUs can specifically perform the Fused Multiply Add operation in a single cycle!. This is amazing because if we go back to our knowledge of neural networks, the fundamental equation used across neural networks is weight * input + bias. I also believe the origin of the neural network, the perceptron, uses the same equation! One could assume that the hardware was specifically tailored for this exact equation and purpose!
 
 
-
+Needed information to calculate:
+- **Kernel:** N, FLOPs per element, whether the operation is Fused Multipy Add or not
+- **Hardware:** CUDA cores, clock speed
 
 <br><br><br>
 
@@ -603,14 +612,19 @@ $$ \text{Peak FLOPS} = \text{CUDA Cores} \times \text{Clock Speed} \times 1 \tex
 
 
 <h3>C. Latency Bound </h3>
-Are there enough memory requests in the pipeline right now to keep the DRAM busy, or is the DRAM idle?<br><br>
+Are there enough memory requests in the pipeline right now to keep the DRAM busy, or is the DRAM idle? (Percentage) <br><br>
 
-$$ \text{Efficiency}_{Latency} = \min\left(\frac{\text{Bytes in Flight}}{\text{Bytes in Flight Needed}}, 1.0\right) $$
+$$ \text{Latency Efficiency} = \frac{\text{Bytes in Flight}}{\text{Bytes in Flight Needed}} \times 100\% $$
 
 $$ \text{Bytes in Flight} = \text{Total Warps} \times \text{Concurrent Memory Requests per Warp} \times \text{Bytes per Request} $$
 
 $$ \text{Bytes in Flight Needed} = \text{Peak Bandwidth} \times \text{DRAM Latency} $$
 
+
+Needed information to calculate:
+- **Kernel:** How many independent memory requests can be inflight at once per thread, Bytes per memory request
+- **Hardware:** Peak DRAM bandwidth, DRAM latency, Max warps per SM, Number of SMs
+  _Note: Can use actual achieved maximum warps instead_
 
 <br><br><br>
 
@@ -619,10 +633,14 @@ $$ \text{Bytes in Flight Needed} = \text{Peak Bandwidth} \times \text{DRAM Laten
 
 
 <h3>D. L2 Cache Bandwidth Bound</h3>
-Can the L2 cache feed data to the SMs fast enough, or is it a bottleneck?<br><br>
+Can the L2 cache feed data to the SMs fast enough, or is it a bottleneck? (milliseconds)<br><br>
 
 $$ T_{L2} = \frac{\text{Total Bytes through L2}}{\text{L2 Bandwidth}} $$
 
+
+Needed information to calculate:
+- **Kernel:** Total bytes passing through L2, can differ from DRAM due to write-validate reads or cache hits
+- **Hardware:** L2 bandwidth
 
 
 <br><br><br>
@@ -637,6 +655,9 @@ $$ T_{Issue} = \frac{\text{Total Warp Instructions}}{\text{Warp Instruction Issu
 
 $$ \text{Warp Instruction Issue Rate} = \text{Schedulers per SM} \times \text{Num SMs} \times \text{Clock Speed} $$
 
+
+- **Kernel:** Total instructions per element (from Nsight)
+- **Hardware:** Schedulers per SM, Number of SMs, Clock speed, Warp size
 
 
 <br><br><br>
@@ -653,7 +674,8 @@ $$ \text{Total Warp Memory Instructions} = \frac{N \times \text{Memory Ops per E
 
 $$ \text{LSU Issue Rate} = \text{LSUs per SM} \times \text{Num SMs} \times \text{Clock Speed} $$
 
-
+- **Kernel:** N, Memory operations per element (loads + stores)
+- **Hardware:** Load Store Units per SM, Number of SMs, Clock speed, Warp size
 
 <br><br><br>
 
@@ -661,26 +683,28 @@ $$ \text{LSU Issue Rate} = \text{LSUs per SM} \times \text{Num SMs} \times \text
 
 
 <h3>G. Shared Memory Bandwidth Bound</h3>
-Can shared memory serve all the reads and writes required fast enough?<br><br>
+Can shared memory serve all the reads and writes required fast enough? (milliseconds)<br><br>
 
 $$ T_{SMEM} = \frac{\text{Total Shared Memory Transactions}}{\text{Shared Memory Bandwidth}} $$
 
 $$ \text{Shared Memory Bandwidth} = \text{Banks per SM} \times \text{Bytes per Bank per Cycle} \times \text{Clock Speed} \times \text{Num SMs} $$
 
 
-
+- **Kernel:** Shared memory transaction per element, bank conflict multiplier (1x if no conflicts)
+- **Hardware:** Banks per SM, Bytes per bank per cycle, Clock speed, Number of SMs
 
 <br><br><br>
 
 
 
 <h3>H. PCIe Transfer Bound</h3>
-Is the kernel wiating on data moving from the CPU and GPU, rather than actually computing?<br><br>
+Is the kernel waiting on data moving from the CPU and GPU, rather than actually computing? (milliseconds) <br><br>
 
 $$ T_{PCIe} = \frac{\text{Total Bytes Transferred (Host} \leftrightarrow \text{Device)}}{\text{PCIe Bandwidth}} $$
 
 
-
+- **Kernel:** Total bytes sent to device + Total bytes read back from device
+- **Hardware:** PCIe bandwidth
 
 <br><br><br>
 
