@@ -551,15 +551,16 @@ From this project I learned:
 
 <h1>What I Would Do Differently</h1>
 
-If I were to restart this vector add proejct from scratch with the knowledge I have now (or any project from now on) this would be my process:
+If I were to restart this vector add project from scratch with the knowledge I have now (and any project from now on) this would be my process:
 
-1. I would disect the vector add equation itself before I even think to write a single piece of code. This gives me the theoretical FLOPs/byte. This is important because before we even start, we should understand what our expected bottlenecks will be.
+**1. I would disect the vector add equation itself before I even think to write a single piece of code. This gives me the theoretical FLOPs/byte. This is important because before we even start, we should understand what our expected bottlenecks will be.**
 
-- For vector add we concluded that it performs two reads (A and B) a single write (C) and performs a single floating point operation (add). This results in a FLOPs/byte of 0.08, which between compute and memory bound, this tells us our kernel is memory bound.
+  - For vector add we concluded that it performs two reads (A and B) a single write (C) and performs a single floating point operation (add). This results in a FLOPs/byte of 0.08, which between compute and memory bound, this tells us our kernel is memory bound.
+  
+  - While this provides a great insight into what our bottleneck might be between compute and memory, it turns out theres a even sneakier possible bottleneck. It turns out another potential bottleneck is actually latency! Latency bound is when the number of instructions being performed is significantly more than the L2 cache can handle. From my current understanding, this results in the write-back buffer in the L2 cache to be very convoluted to the point where if the write buffer is full, the L2 cache has to stop all reads and write warps to evict all of the dirty cache lines.
 
-- While this provides a great insight into what our bottleneck might be between compute and memory, it turns out theres a even sneakier possible bottleneck. It turns out another potential bottleneck is actually latency! Latency bound is when the number of instructions being performed is significantly more than the L2 cache can handle. From my current understanding, this results in the write-back buffer in the L2 cache to be very convoluted to the point where if the write buffer is full, the L2 cache has to stop all reads and write warps to evict all of the dirty cache lines.
+**2. Once the equation is analyzed, I would do the following which I recently learned about. This process is a lot more complicated (which makes it alot more interesting), but offers a significant theoretical view into our kernel.**
 
-2. Once the equation is analyzed, I would do the following which I recently learned about. This process is a lot more complicated (which makes it alot more interesting), but offers a significant view into our kernel.
 
 
 
