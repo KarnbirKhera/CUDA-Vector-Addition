@@ -703,13 +703,9 @@ Needed information to calculate:
 
 
 
-<h3>I. Theoretical Runtime</h3>
-The slowest bottleneck determines the kernel's speed.<br><br>
+After looking into it, there are many other ways to be bottlenecked as well! This is great because it allows us to diagnose our kernel at a much deeper level before we even write the kernel. 
 
-$$ T_{Kernel} = \max(T_{DRAM},\ T_{Compute},\ T_{L2},\ T_{LSU},\ T_{Issue},\ T_{SMEM}) $$
-
-
-After looking into it, there are many other ways to be bounded as well! This is great because it allows us to diagnose our kernel at a much deeper level before we even write the kernel. The reason I wrote the time to write this all out is because I think it might actually be a very, very helpful way to know what optimization technique to use for this kernel and all the kernels beyond. I believe this might be the case because say we're DRAM Bandwidth bound, these equations tell us what variables contribute to our kernel's bottleneck, and what potential optimization technique we can perform to allow for more throughput!
+I wrote the time to write this all out is because I think it might actually be a very, very helpful way to know what optimization technique to use for this kernel and all the kernels beyond. I believe this might be the case because say we're DRAM Bandwidth bound, these equations tell us what variables contribute to our kernel's bottleneck, and what potential optimization technique we can perform to allow for more throughput!
 
 To test this theory, lets apply the following equations to vector add where they apply!
 
