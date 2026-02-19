@@ -727,9 +727,28 @@ To test this theory, lets apply the following equations to vector add where they
 <h3>Compute Bound</h3>
 <img width="2103" height="697" alt="image" src="https://github.com/user-attachments/assets/8835f4e6-db46-46c3-8ba8-6cdd7d78ee86" />
 
+<br><br<br>
 
+<h3>Latency Bound</h3>
+<img width="1799" height="1063" alt="image" src="https://github.com/user-attachments/assets/041922cb-1330-4263-a8a9-7473e0a2b20d" />
 
 <br><br><br>
+
+<h3>L2 Cache Bandwidth Bound</h3>
+<img width="2080" height="743" alt="image" src="https://github.com/user-attachments/assets/261b1634-273e-4567-8eaa-e0944a0f38b2" />
+
+<br><br><br>
+
+<h3>Instruction Issue Bound</h3>
+<img width="1522" height="1072" alt="image" src="https://github.com/user-attachments/assets/6c9d3c30-86d4-4de1-aec3-042d09e28b41" />
+
+<br><br><br>
+
+<h3>Load/Store Unit Throughput Bound</h3>
+<img width="1727" height="1038" alt="image" src="https://github.com/user-attachments/assets/00f54d3f-9713-44e8-86b9-4818769b5d45" />
+
+<br><br><br>
+
 
 <h3>Hardware</h3>
 On current GPU (RTX 4060):<br>
