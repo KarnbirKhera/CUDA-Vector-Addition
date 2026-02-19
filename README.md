@@ -672,7 +672,7 @@ Can the Load Store Unit in each SM, which only translates memory instructions to
 
 $$ T_{LSU} = \frac{\text{Total Warp Memory Instructions}}{\text{LSU Issue Rate}} $$
 
-$$ \text{Total Warp Memory Instructions} = \frac{N \times \text{Memory Ops per Element}}{\text{Warp Size}} $$
+$$ \text{Total Warp Memory Instructions} = \frac{N \times \text{Memory Ops per Thread}}{\text{Warp Size}} $$
 
 $$ \text{LSU Issue Rate} = \text{LSUs per SM} \times \text{Num SMs} \times \text{Clock Speed} $$
 
