@@ -723,7 +723,7 @@ To test this theory, lets apply the following equations to vector add where they
 <h3>Compute Bound</h3>
 <img width="2103" height="697" alt="image" src="https://github.com/user-attachments/assets/8835f4e6-db46-46c3-8ba8-6cdd7d78ee86" />
 
-<br><br<br>
+<br><br><br>
 
 <h3>Latency Bound</h3>
 <img width="1799" height="1063" alt="image" src="https://github.com/user-attachments/assets/041922cb-1330-4263-a8a9-7473e0a2b20d" />
