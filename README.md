@@ -816,11 +816,25 @@ With this disected view of our bottleneck, we can actually infer what we can do!
       - Range: 0, 0.5, 1, 1.5, 2, 3, 4, 6 and their negative counter parts.
       - Example: -0.5<br><br>
 
-> **A lesson into Exponential and Mantissa Bits**
+> **A lesson into Exponent and Mantissa Bits**
 >
 > While researching the different float types, I will be honest, I did not know what Exponential or Mantissa bits were. After looking into it, this is my current understanding of them, and I hope those who are also new to the different float types, that this provides a helpful way to understand them.
 >
+> Mantissa Bits are the bits that actually say how many digits do we hold? Mantissa bits determine whether our value type can hold say the value "1231923" or just the value "123"
+> Exponent Bits are the bits that actually say now where does the decimal point go? Say we have an negative exponent bit, we can turn the "1231923" value to "123.1923" or to "0.00001231923"
+>
+> One question I had was, how are the extra 0.0000 values stored? Wouldnt that result in needing more memory? This is where the beauty of the exponent bit comes in. Say we have the the orginal number 0.00001231923, the way the computer actually stores the value is this following
+> - Mantissa value: 1231923
+> - Exponent Value: -11
+> Using these values, when the computer wants the same number again, it can use the Mantissa value of 1231923, then multiply it by 10^-11, and now we're back to our orginial number of 0.0001231923 without needing additional bits to store the leading zeros!
 > 
+> _Note: In reality, the Mantissa would store the value as 1.231923 which would result in our exponent value being -5, but for the sake of learning, we will treat it as an integer._
+>
+> Now the last major thing we have is the sign bit. This is just a simple 0 or 1 bit at the front of our number that tells the copmuter is the number a negative or a postiive?
+> If its 0, the value is positive, if 1 the value is negative
+>
+> On 
+
 <h3>Hardware</h3>
 On current GPU (RTX 4060):<br>
 - 24 SMs<br>
