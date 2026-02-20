@@ -830,10 +830,11 @@ With this disected view of our bottleneck, we can actually infer what we can do!
 > 
 > _Note: In reality, the Mantissa would store the value as 1.231923 which would result in our exponent value being -5, but for the sake of learning, we will treat it as an integer._
 >
-> Now the last major thing we have is the sign bit. This is just a simple 0 or 1 bit at the front of our number that tells the copmuter is the number a negative or a postiive?
-> If its 0, the value is positive, if 1 the value is negative
 >
-> On 
+> While this is an amazing system to store values, there is a draw back that we should be aware of. Say we can hold a single digit using our Mantissa bit where we can hold 1, 2, 3, 4, 5, 6, 7, 8 and 9. Now lets say we apply our exponent bit, this lets us represent those single digits values into say double digit values such as 10, 20, 30, 40, 50, 60, 70, 80 and 90.
+>
+> 
+
 
 <h3>Hardware</h3>
 On current GPU (RTX 4060):<br>
