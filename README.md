@@ -834,12 +834,13 @@ With this disected view of our bottleneck, we can actually infer what we can do!
 >
 > While this is an amazing system to store values, there is a draw back that we should be aware of.
 >
-> Say we can hold a single digit using our Mantissa bit where we can hold 1, 2, 3, 4, 5, 6, 7, 8 and 9. Now lets say we apply our exponent bit, this lets us represent those single digits values into say double digit values such as 10, 20, 30, 40, 50, 60, 70, 80 and 90. As we can see, we are unable to express the values inbetween our numbers, and the computer is required to round either way to the closest digit.
+> Say we can hold a single digit using our Mantissa bit where we can hold 1, 2, 3, 4, 5, 6, 7, 8 and 9. Now lets say we apply our exponent bit, this lets us represent those single digits values into say double digit values such as 10, 20, 30, 40, 50, 60, 70, 80 and 90. As we can see, we are unable to express the values inbetween our numbers. Say we had a value of 76, the computer would have to round to the nearest value we can express which would be 80.
+> 
+> Now what if our exponent bit allows us to express the hundreds place? Now our values can represent 100, 200, 300, 400, 500, 600, 700, 800 and 900. This means the values we are unable to express are even larger, and say we have a value of 151, the computer must round to the nearest digit which is 200. This means the greater our values from zero, the more larger these jumps between numbers become. Now in a field like machine learning where in a neural network during back propagation where absolute precision matters, we can imagine why this may be a problem.
 >
-> Now what if our exponent bit allows us to express the hundreds place? Now our values can represent 100, 200, 300, 400, 500, 600, 700, 800 and 900. This means the values we are unable to express are even larger, and say we have a value of 151, the computer must round to the nearest digit which is 200. Now in a field like machine learning where in a neural network during back propagation where absolute precision matters, we can imagine why this may be a problem.
 >
 >
-> Now to solve this we can either trade a Exponent bit for a Mantissa bit. This would allow us to have two digits allowing for more granularity, we lose some of our range. If we continue our last example, this would mean we can express numbers like 1.5 or 15, but we lose our ability to represent the hundredths place.
+> Now to solve this we can either trade a Exponent bit for a Mantissa bit. This would allow us to have two digits allowing for more granularity, but we lose some of our range. If we continue our last example, this would mean we can express numbers like 76 or 15, but we lose our ability to represent the hundreds place.
 >
 > Another way to solve this is to increase the size of the type of value itself so rather trading a Mantissa bit for an Exponent, we can increase the total number of bits.
 >
