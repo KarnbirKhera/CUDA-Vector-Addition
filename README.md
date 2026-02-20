@@ -795,17 +795,17 @@ With this disected view of our bottleneck, we can actually infer what we can do!
       - Percision: ~2 decimal digits
       - Range: 10^-38 to 10^38
       - Example: 3.14<br><br>
-    - FP8 (4 Exponential Bits, 3 Mantissa Bits)
+    - FP8 (4 Exponent Bits, 3 Mantissa Bits)
       - Size: 8 bits
       - Percision: ~1 decimal digit
       - Range: -448 to 448
       - Example: 3.1<br><br>
-    - FP8 (5 Exponential  Bits, 2 Mantissa Bits)
+    - FP8 (5 Exponent  Bits, 2 Mantissa Bits)
       - Size: 8 bits
       - Percision: Whole numbers
       - Range: -57,344 to 57,344
       - Example: 12,288<br><br>
-    - FP6 (3 Exponential, 2 Mantissa)
+    - FP6 (3 Exponent, 2 Mantissa)
       - Size: 6 bits
       - Percision: Whole numbers
       - Range: -28 to 28
@@ -818,7 +818,7 @@ With this disected view of our bottleneck, we can actually infer what we can do!
 
 > **A lesson into Exponent and Mantissa Bits**
 >
-> While researching the different float types, I will be honest, I did not know what Exponential or Mantissa bits were. After looking into it, this is my current understanding of them, and I hope those who are also new to the different float types, that this provides a helpful way to understand them.
+> While researching the different float types, I will be honest, I did not know what Exponent or Mantissa bits were. After looking into it, this is my current understanding of them, and I hope those who are also new to the different float types, that this provides a helpful way to understand them.
 >
 > Mantissa Bits are the bits that actually say how many digits do we hold? Mantissa bits determine whether our value type can hold say the value "1231923" or just the value "123"
 > Exponent Bits are the bits that actually say now where does the decimal point go? Say we have an negative exponent bit, we can turn the "1231923" value to "123.1923" or to "0.00001231923"
@@ -826,15 +826,21 @@ With this disected view of our bottleneck, we can actually infer what we can do!
 > One question I had was, how are the extra 0.0000 values stored? Wouldnt that result in needing more memory? This is where the beauty of the exponent bit comes in. Say we have the the orginal number 0.00001231923, the way the computer actually stores the value is this following
 > - Mantissa value: 1231923
 > - Exponent Value: -11
-> Using these values, when the computer wants the same number again, it can use the Mantissa value of 1231923, then multiply it by 10^-11, and now we're back to our orginial number of 0.0001231923 without needing additional bits to store the leading zeros!
+> Using these values, when the computer wants the same number again, it can use the Mantissa value of 1231923, then multiply it by 10^-11, and now we're back to our orginial number of 0.00001231923 without needing additional bits to store the leading zeros!
 > 
 > _Note: In reality, the Mantissa would store the value as 1.231923 which would result in our exponent value being -5, but for the sake of learning, we will treat it as an integer._
 >
 >
-> While this is an amazing system to store values, there is a draw back that we should be aware of. Say we can hold a single digit using our Mantissa bit where we can hold 1, 2, 3, 4, 5, 6, 7, 8 and 9. Now lets say we apply our exponent bit, this lets us represent those single digits values into say double digit values such as 10, 20, 30, 40, 50, 60, 70, 80 and 90.
+> While this is an amazing system to store values, there is a draw back that we should be aware of.
 >
-> 
-
+> Say we can hold a single digit using our Mantissa bit where we can hold 1, 2, 3, 4, 5, 6, 7, 8 and 9. Now lets say we apply our exponent bit, this lets us represent those single digits values into say double digit values such as 10, 20, 30, 40, 50, 60, 70, 80 and 90. As we can see, we are unable to express the values inbetween our numbers, and the computer is required to round either way to the closest digit.
+>
+> Now what if our exponent bit allows us to express the hundreds place? Now our values can represent 100, 200, 300, 400, 500, 600, 700, 800 and 900. This means the values we are unable to express are even larger, and say we have a value of 151, the computer must round to the nearest digit which is 200. Now in a field like machine learning where in a neural network during back propagation where absolute precision matters, we can imagine why this may be a problem.
+>
+>
+> Now to solve this we can either trade a Exponent bit for a Mantissa bit. This would allow us to have two digits allowing for more granularity, we lose some of our range. If we continue our last example, this would mean we can express numbers like 1.5 or 15, but we lose our ability to represent the hundredths place.
+>
+> Another way to solve this is to increase the size of the type of value itself so rather trading a Mantissa bit for an Exponent, we can increase the total number of bits.
 
 <h3>Hardware</h3>
 On current GPU (RTX 4060):<br>
