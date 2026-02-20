@@ -748,17 +748,27 @@ To test this theory, lets apply the following equations to vector add where they
 Now that we have our lovely insight into our kernel, lets aggregate our results and see what they tell us!
 
 
-| Bottleneck                         | Estimated Duration (milliseconds)      |
+| Bottleneck                         | Estimated Duration/Efficiency          |
 |------------------------------------|----------------------------------------|
-| DRAM Bandwidth Bound (Memory)      | Naive                                  |
-| Compute Bound                      | Grid Stride                            |
-| Latency Bound                      | Vectorization (float4)                 |
-| L2 Cache Bandwidth Bound           | Grid Stride + Vectorization            |
-| Instruction Issue Bound            | Grid Stride + Vectorization + ILP=2    |
-| Load/Store Unit Throughput Bound   | Grid Stride + Vectorization + ILP=4    |
+| DRAM Bandwidth Bound (Memory)      | 8.82 ms                                |
+| Compute Bound                      | 0.026 ms                               |
+| Latency Bound                      | 100%                                   |
+| L2 Cache Bandwidth Bound           | 5.29 ms                                |
+| Instruction Issue Bound            | 0.018 ms                               |
+| Load/Store Unit Throughput Bound   | 0.11 ms                                |
 
 
+From our equations, we can see that the bottleneck our vector add our kernel will face is the DRAM Bandwidth. While this is great to know, our equations actually allow us to dig even deeper into why this is the case, and how we can optimize it!
 
+Lets look at our DRAM Bandwidth equation: 
+
+<br><br>
+
+$$ T_{DRAM} = \frac{\text{Total Bytes Transferred}}{\text{Peak DRAM Bandwidth}} $$
+
+<br><br>
+
+We know that Total Bytes transferred is made up of Total number of elements * 
 
 
 <h3>Hardware</h3>
