@@ -745,6 +745,21 @@ To test this theory, lets apply the following equations to vector add where they
 
 <br><br><br>
 
+Now that we have our lovely insight into our kernel, lets aggregate our results and see what they tell us!
+
+
+| Bottleneck                         | Estimated Duration (milliseconds)      |
+|------------------------------------|----------------------------------------|
+| DRAM Bandwidth Bound (Memory)      | Naive                                  |
+| Compute Bound                      | Grid Stride                            |
+| Latency Bound                      | Vectorization (float4)                 |
+| L2 Cache Bandwidth Bound           | Grid Stride + Vectorization            |
+| Instruction Issue Bound            | Grid Stride + Vectorization + ILP=2    |
+| Load/Store Unit Throughput Bound   | Grid Stride + Vectorization + ILP=4    |
+
+
+
+
 
 <h3>Hardware</h3>
 On current GPU (RTX 4060):<br>
