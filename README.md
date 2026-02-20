@@ -760,17 +760,61 @@ Now that we have our lovely insight into our kernel, lets aggregate our results 
 
 From our equations, we can see that the bottleneck our vector add our kernel will face is the DRAM Bandwidth. While this is great to know, our equations actually allow us to dig even deeper into why this is the case, and how we can optimize it!
 
-Lets look at our DRAM Bandwidth equation: 
+Lets look at our DRAM Bandwidth equation but expanded to include more information: 
 
 <br><br>
 
-$$ T_{DRAM} = \frac{\text{Total Bytes Transferred}}{\text{Peak DRAM Bandwidth}} $$
+$$ T_{DRAM} = \frac{\text{Number of Elements * Size of Element}}{\text{Peak DRAM Bandwidth}} $$
 
 <br><br>
 
-We know that Total Bytes transferred is made up of Total number of elements * 
+From this equation, we know to ease our bottleneck we have the following options.
 
+- Decrease the number of elements
+- Decrease the size of the elements
+- Increase the DRAM Bandwidth
 
+With this disected view of our bottleneck, we can actually infer what we can do!
+
+- Decreasing the elements
+  - For vector add, we need every value we have to properly make sure all data is summed correctly, so this is not optimal.
+- Decrease ths size of the elements
+  - Now this is something we can theoretically do! Rather than needing the full percision of the float type, we can trade percision for a smaller byte value! After looking into it, this what float types are offered.
+    - FP32 (Single Percision)
+      - Size: 32 bits
+      - Percision: ~7 decimal digits
+      - Range: 10^-38 to 10^38
+      - Example: 3.1415926
+    - FP16 (Half Percision)
+      - Size: 16 bits
+      - Percision: ~3 decimal digits
+      - Range: 5.96e-8 to 65,504
+      - Example: 3.141
+    - BF16 (Brain Float)
+      - Size: 16 bits
+      - Percision: ~2 decimal digits
+      - Range: 10^-38 to 10^38
+      - Example: 3.14
+    - FP8 (4 Exponential Bits, 3 Mantissa Bits)
+      - Size: 8 bits
+      - Percision: ~1 decimal digit
+      - Range: -448 to 448
+      - Example: 3.1
+    - FP8 (5 Exponential  Bits, 2 Mantissa Bits)
+      - Size: 8 bits
+      - Percision: Whole numbers
+      - Range: -57,344 to 57,344
+      - Example: 12,288
+    - FP6 (3 Exponential, 2 Mantissa)
+      - Size: 6 bits
+      - Percision: Whole numbers
+      - Range: -28 to 28
+      - Example: 52
+    - FP4 (2 Exponent Bits and 1 Mantissa Bit)
+      - Size: 4 bits
+      - Percision: 16 values only
+      - Range: 0, 0.5, 1, 1.5, 2, 3, 4, 6 and their negative counter parts.
+      - Example: -0.5     
 <h3>Hardware</h3>
 On current GPU (RTX 4060):<br>
 - 24 SMs<br>
