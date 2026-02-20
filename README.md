@@ -778,7 +778,7 @@ With this disected view of our bottleneck, we can actually infer what we can do!
 
 - Decreasing the elements
   - For vector add, we need every value we have to properly make sure all data is summed correctly, so this is not optimal.
-- Decrease ths size of the elements
+- Decrease the size of the elements
   - Now this is something we can theoretically do! Rather than needing the full percision of the float type, we can trade percision for a smaller byte value! After looking into it, this what float types are offered.<br><br>
     - FP32 (Single Percision)
       - Size: 32 bits
@@ -842,6 +842,10 @@ With this disected view of our bottleneck, we can actually infer what we can do!
 > Now to solve this we can either trade a Exponent bit for a Mantissa bit. This would allow us to have two digits allowing for more granularity, we lose some of our range. If we continue our last example, this would mean we can express numbers like 1.5 or 15, but we lose our ability to represent the hundredths place.
 >
 > Another way to solve this is to increase the size of the type of value itself so rather trading a Mantissa bit for an Exponent, we can increase the total number of bits.
+>
+> _Note: We assumed a base 10 for our exponent values, but in reality the computer uses a base of 2._
+
+
 
 <h3>Hardware</h3>
 On current GPU (RTX 4060):<br>
