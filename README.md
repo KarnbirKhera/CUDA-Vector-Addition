@@ -779,42 +779,48 @@ With this disected view of our bottleneck, we can actually infer what we can do!
 - Decreasing the elements
   - For vector add, we need every value we have to properly make sure all data is summed correctly, so this is not optimal.
 - Decrease ths size of the elements
-  - Now this is something we can theoretically do! Rather than needing the full percision of the float type, we can trade percision for a smaller byte value! After looking into it, this what float types are offered.
+  - Now this is something we can theoretically do! Rather than needing the full percision of the float type, we can trade percision for a smaller byte value! After looking into it, this what float types are offered.<br><br>
     - FP32 (Single Percision)
       - Size: 32 bits
       - Percision: ~7 decimal digits
       - Range: 10^-38 to 10^38
-      - Example: 3.1415926 <br>
+      - Example: 3.1415926 <br><br>
     - FP16 (Half Percision)
       - Size: 16 bits
       - Percision: ~3 decimal digits
       - Range: 5.96e-8 to 65,504
-      - Example: 3.141
+      - Example: 3.141<br><br>
     - BF16 (Brain Float)
       - Size: 16 bits
       - Percision: ~2 decimal digits
       - Range: 10^-38 to 10^38
-      - Example: 3.14
+      - Example: 3.14<br><br>
     - FP8 (4 Exponential Bits, 3 Mantissa Bits)
       - Size: 8 bits
       - Percision: ~1 decimal digit
       - Range: -448 to 448
-      - Example: 3.1
+      - Example: 3.1<br><br>
     - FP8 (5 Exponential  Bits, 2 Mantissa Bits)
       - Size: 8 bits
       - Percision: Whole numbers
       - Range: -57,344 to 57,344
-      - Example: 12,288
+      - Example: 12,288<br><br>
     - FP6 (3 Exponential, 2 Mantissa)
       - Size: 6 bits
       - Percision: Whole numbers
       - Range: -28 to 28
-      - Example: 52
+      - Example: 52<br><br>
     - FP4 (2 Exponent Bits and 1 Mantissa Bit)
       - Size: 4 bits
       - Percision: 16 values only
       - Range: 0, 0.5, 1, 1.5, 2, 3, 4, 6 and their negative counter parts.
-      - Example: -0.5     
+      - Example: -0.5<br><br>
+
+> **A lesson into Exponential and Mantissa Bits**
+>
+> While researching the different float types, I will be honest, I did not know what Exponential or Mantissa bits were. After looking into it, this is my current understanding of them, and I hope those who are also new to the different float types, that this provides a helpful way to understand them.
+>
+> 
 <h3>Hardware</h3>
 On current GPU (RTX 4060):<br>
 - 24 SMs<br>
