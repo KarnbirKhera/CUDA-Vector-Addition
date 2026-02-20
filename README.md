@@ -784,7 +784,7 @@ With this disected view of our bottleneck, we can actually infer what we can do!
       - Size: 32 bits
       - Percision: ~7 decimal digits
       - Range: 10^-38 to 10^38
-      - Example: 3.1415926
+      - Example: 3.1415926 <br>
     - FP16 (Half Percision)
       - Size: 16 bits
       - Percision: ~3 decimal digits
