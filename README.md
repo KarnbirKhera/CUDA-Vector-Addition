@@ -507,7 +507,7 @@ While float8 is not supported in CUDA, so our earlier float8 analysis is just th
    - Why this happened:
      - Grid Stride: Kernel must keep track of the iteration index, compare the iteration index to the n size and increment the iteration index. This creates instruction dependency chains where one must be done before the other. This instruction dependency likely contributes to the increased warp cycles required on average per instruction.
      - Vectorization: There is a minimal difference in terms of stall time when calling a single float versus a float4 because on a warp scale both are coalesced to the 32 byte sectors of the DRAM. After looking into the SASS, the increase in instructions was from:
-       - _int n4 = n / 4:_ This is used to calculate the number of elements that are divisible and can be operated using float 4, and was responsible for 23.08% of all instructions executed
+       - _int n4 = n / 4:_ This is used to calculate the number of elements that are divisible and can be operated using float4, and was responsible for 23.08% of all instructions executed
        - _Tail Handling:_ The tail handling was responsible for 7.69% of all instructions executed
        - **Note:** I believe in most vectorized kernels, the data is often padded by the host before being sent to the device, which would circumvent this problem completely. For the sake of learning why this is done in the first place, padding was not used.
 
