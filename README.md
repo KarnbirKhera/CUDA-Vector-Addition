@@ -3,7 +3,7 @@
 <h1>Introduction</h1>
 This project is the first step in my CUDA learning journey from scratch, starting with vector addition and then progressively adding common GPU optimization techniques.
 Along the way I learned that "optimizations" don't always make things faster, and its important to use tools like NVIDIA Nsight to understand why and when to apply
-specific optimization techniques. This project was also very good for me to learn memory coalescing, ...
+specific optimization techniques.
 
 <h1>Goals of the Project</h1>
 - Understand how different CUDA kernel designs affect performance <br>
