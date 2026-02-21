@@ -878,4 +878,4 @@ This project first started as way for me to learn the memory hierarchy, how to o
 
 After learning that none of the optimization techniques I used help, this project transitioned from learning just how to code in a parallel programming manner, but rather a deep dive into why GPUs behave the way they do. Looking back, I am eternally greatful that none of the optimization techniques helped because I feel the depth of what I've learned from this project will genuinely be useful for the upcoming kernels I learn.
 
-While the learning for this project
+I am also eternally greatful for this project because I feel as though I've finally found the niche I can imagine a career in. What was suppose to be a 5 page simple Github project on how vector add works, turned into what I'm now looking back at is a 40 page document. I did not mean to spend a month on this project, nor to make it 40 pages, but the genuine excitement of being able to dig deep into why something behaves the way it does, and being able to actually go through each layer from the kernel itself, to the Nsight Compute profile, to the SASS, and all the way down to the hardware itself has 
