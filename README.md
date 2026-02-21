@@ -325,8 +325,8 @@ The reason why I believe the hit rate of write is always a 100% is because no ma
 
 <br><br>
 
-> Note from future self:
-> The conducted the same micro-benchmark on the Blackwell architecture and found very similar results. This suggests the write-validate L2 cache policy is also present on the Blackwell architecture. The following <a href="https://www.linkedin.com/feed/update/urn:li:activity:7430642396683599872/?originTrackingId=89WlEwujXqhEoENNJ6Wp5w%3D%3D" target="_blank">LinkedIn</a> post goes into the micro-benchmark results in more depth.
+<h3>Write-Validate on Blackwell Architecture</h3>
+ The conducted the same micro-benchmark on the Blackwell architecture and found very similar results. This suggests the write-validate L2 cache policy is also present on the Blackwell architecture. The following <a href="https://www.linkedin.com/feed/update/urn:li:activity:7430642396683599872/?originTrackingId=89WlEwujXqhEoENNJ6Wp5w%3D%3D" target="_blank">LinkedIn</a> post goes into the micro-benchmark results in more depth.
 
 
 <br><br><br><br>
