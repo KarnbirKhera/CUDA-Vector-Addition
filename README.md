@@ -191,12 +191,14 @@ After further analysis:<br>
 <img width="1413" height="188" alt="image" src="https://github.com/user-attachments/assets/ed3db8eb-4af4-4984-b1cd-bc7dd2b9ccb1" />
 
 <br>
-From the following SASS panel for the naive kernel we see a "Store to Global Memory" STG.E instruction. From my current understanding on the RTX 4060 hardware architecture the way the STG.E instruction works.<br><br>
+From the following SASS panel for the naive kernel we see a "Store to Global Memory" STG.E instruction. From my current understanding on the RTX 4060 hardware architecture the way the STG.E instruction works.<br>
 
 - When writing to DRAM, if cache HIT: A single write instruction
 - When writing to DRAM, if cache MISS: A single read instruction, followed later by a write instruction
 
 > _Note: I later discovered this model was incomplete. The next section "Revisiting the L2 Cache Write Behavior" depicts the behavior more accurately._
+
+<br><br>
 
 For this kernel we have a single 4 byte float write per thread, on a warp scale this results in a perfect 128 byte write to the 128 byte cache line. This means for every new warp write, there is a very high likelyhood the required four 32 byte sectors in the DRAM are not in the L2 cache. This means every warp write will result in a cache line miss, because of this the kernel is required to do a DRAM read of the four 32 byte sectors in the DRAM before writing. This is supported by following images where the L2 lts__t_sectors_op_read.sum is 1,538,775, and in the Nsight compute kernel we have a total sector misses to device of 1,508,103, this suggests these L2 cache misses result in a signfiicant amount of reads made by the kernel. This GPU behavior of cache miss resulting in a read is supported by the following NVIDIA post https://forums.developer.nvidia.com/t/how-do-gpus-handle-writes/58914/5.
 
@@ -204,7 +206,7 @@ After looking into this even more, I found that this read write policy is very i
 
 Say our kernel was able to write directly into the DRAM, bypassing the L2 cache. At first I thought this was a great idea, we'd avoid the L2 cache entirely and I assumed it would result in faster performance. The problem with this is the DRAM can only load a single cache line into its buffer at a time. To write to the DRAM, you first have to open the cache line, this means using the DRAM's 2-8kb cache to load the entire row, this is a ~50 nanosecond action, then writing to the row which is often ~20 nanosecond action. At first this may seem trivial, but from the perspective of parallel programming this can prove very in-efficient.
 
-Say we have the following scenario where both SM One and SM Two are writing to the DRAM in parallel.<br><br>
+Say we have the following scenario where both SM One and SM Two are writing to the DRAM in parallel.<br>
 
 - SM One: Opens cache line A and it is loaded into the DRAM's single row buffer (50 nanoseconds) and writes a single 16 byte value (20 nanoseconds)
 - SM Two: Opens cache line B and it is loaded into the DRAM's single row buffer (50 nanoseconds) and writes a single 16 byte value (20 nanoseconds)
@@ -214,9 +216,6 @@ Say we have the following scenario where both SM One and SM Two are writing to t
 <br><br>
 
 The in-efficiency lies where the DRAM's single row buffer does not allow the full strength of parallel programming to shine, and this is where the L2 cache comes in. The way the L2 cache works is the following:
-
-> Note from future self:
-> Each memory bank in the DRAM has its own row buffer, not a single row buffer for the entire DRAM.<br><br>
 
 - SM One: Writes to L2 cache with a single value, targeted at memory sector A in the DRAM
 - SM Two: Writes to L2 cache with a single value, targeted at memory sector B in the DRAM
@@ -229,6 +228,10 @@ The in-efficiency lies where the DRAM's single row buffer does not allow the ful
 - The L2 cache: Opens a cache line to memory sector B (50 nanoseconds) and batch writes two 16 byte values (~20 nanoseconds)
 
 <br>
+> Note from future self:
+> Each memory bank in the DRAM has its own row buffer, not a single row buffer for the entire DRAM.<br><br>
+
+
 
 Rather than needing to re-open cache lines, the L2 cache gathers all the needed values to be written for each memory sector, then does a single read followed by a batch write. This turns an inefficient 280 nanosecond operation into an efficient 140 nanosecond operation.
 
