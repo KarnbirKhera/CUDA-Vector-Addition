@@ -97,7 +97,7 @@ _Increased register pressure can lead to lower occupancy, if register count per 
 
 <br><br><br>
 <h1>A Deeper Dive into Vector Addition</h1>
-To better understand the performance of each of the optimization techniques, an analysis into the vector addition operation itself provides a great starting point.
+To better understand the performance of each of the optimization techniques, an analysis into the vector addition operation it'self provides a great starting point.
 
 <br>
 <p align="center">
@@ -135,7 +135,7 @@ The naive kernel achieves 93.93% DRAM throughput, showing that the naive kernel 
 <h3>Roofline Placement</h3>
 <img width="1710" height="348" alt="image" src="https://github.com/user-attachments/assets/b48c384b-bc11-4cff-9d6e-c929c5647132" /><br>
 
-The naive kernel has an arithmetic intensity of 0.08 FLOPs/byte according to the roofline model, and sits on the memory roof to the left of the double precision ridge point, which confirms the kernel is memory bound. This matches our early calculation of 12 bytes moved per one floating point operation resulting in 0.08 FLOPs/byte.
+The naive kernel has an arithmetic intensity of 0.08 FLOPs/byte according to the roofline model, and sit's on the memory roof to the left of the double precision ridge point, which confirms the kernel is memory bound. This matches our early calculation of 12 bytes moved per one floating point operation resulting in 0.08 FLOPs/byte.
 
 
 <br><br><br>
@@ -157,7 +157,7 @@ This points out a great distinction between theoretical occupancy and the actual
 
 <h3>Cache Behavior</h3>
 <img width="407" height="598" alt="image" src="https://github.com/user-attachments/assets/a1fe5f9b-8f91-42e5-8cee-7a5720233b57" /><br>
-The naive kernel has an L1 cache hit rate of 0% which is expected as vector add fundamentally does not reuse data. Although, the L2 cache does have a hit rate of 31.53%, which is very unexpected. This is interesting because say in the naive kernel, a single thread requests 4 bytes of data, at a warp level memory call, that is 128 bytes. This fits perfectly into the 128 byte cache line of the RTX 4060, and also perfectly accesses four 32 byte sectors in the DRAM, so at the moment this is a mystery to me.<br>
+The naive kernel has an L1 cache hit rate of 0% which is expected as vector add fundamentally does not reuse data. Although, the L2 cache does have a hit rate of 31.53%, which is very unexpected. This is interesting because say in the naive kernel, a single thread requests 4 bytes of data, at a warp level memory call, that is 128 bytes. This fit's perfectly into the 128 byte cache line of the RTX 4060, and also perfectly accesses four 32 byte sectors in the DRAM, so at the moment this is a mystery to me.<br>
 
 After looking into why this might be the case, the following provides some insight to this mysterious 31% L2 cache hit rate. To better understand why this might be the case, I isolated the vector add kernel added a write only variant, and a read only variant with the following results. 
 
@@ -183,7 +183,7 @@ We can see from the Nsight Compute, the L2 cache hit rate is ~0.07%, which is su
 <img width="451" height="515" alt="image" src="https://github.com/user-attachments/assets/564b7637-e51f-4ec8-841c-703378b9e2ba" />
 <img width="1327" height="445" alt="image" src="https://github.com/user-attachments/assets/dc05e6a7-6fc3-4cc9-a36a-f4a7ff4ef0f7" /> <br>
 
-We can see from the Nsight Compute, the L2 cache hit rate is ~96%, which supported by the detailed L2 report. This percentage is made up of 1,538,775 reads and 25,000,362 writes (C[i]). The 1,538,775 reads is very interesting as the code itself has no A[i] and B[i] reads. 
+We can see from the Nsight Compute, the L2 cache hit rate is ~96%, which supported by the detailed L2 report. This percentage is made up of 1,538,775 reads and 25,000,362 writes (C[i]). The 1,538,775 reads is very interesting as the code it'self has no A[i] and B[i] reads. 
 
 <br><br>
 After further analysis:<br>
@@ -204,7 +204,7 @@ For this kernel we have a single 4 byte float write per thread, on a warp scale 
 
 After looking into this even more, I found that this read write policy is very intentional and is actually fundamental to the hardware/software co-design of not just the RTX 4060, but for all modern GPUs. The reason for this read write policy is very interesting because it solves a problem that before this I had never even thought of.
 
-Say our kernel was able to write directly into the DRAM, bypassing the L2 cache. At first I thought this was a great idea, we'd avoid the L2 cache entirely and I assumed it would result in faster performance. The problem with this is the DRAM can only load a single cache line into its buffer at a time. To write to the DRAM, you first have to open the cache line, this means using the DRAM's 2-8kb cache to load the entire row, this is a ~50 nanosecond action, then writing to the row which is often ~20 nanosecond action. At first this may seem trivial, but from the perspective of parallel programming this can prove very inefficient.<br><br>
+Say our kernel was able to write directly into the DRAM, bypassing the L2 cache. At first I thought this was a great idea, we'd avoid the L2 cache entirely and I assumed it would result in faster performance. The problem with this is the DRAM can only load a single cache line into it's buffer at a time. To write to the DRAM, you first have to open the cache line, this means using the DRAM's 2-8kb cache to load the entire row, this is a ~50 nanosecond action, then writing to the row which is often ~20 nanosecond action. At first this may seem trivial, but from the perspective of parallel programming this can prove very inefficient.<br><br>
 
 Say we have the following scenario where both SM One and SM Two are writing to the DRAM in parallel.<br>
 
@@ -230,7 +230,7 @@ The inefficiency lies where the DRAM's single row buffer does not allow the full
 <br>
 
 > Note from future self:
-> Each memory bank in the DRAM has its own row buffer, not a single row buffer for the entire DRAM.<br><br>
+> Each memory bank in the DRAM has it's own row buffer, not a single row buffer for the entire DRAM.<br><br>
 
 
 
@@ -238,9 +238,9 @@ Rather than needing to re-open cache lines, the L2 cache gathers all the needed 
 
 Now going back to the STG.E, it turns out after more research the .E is actually a modifier for the STG command when it comes to the caching policy. The .E represents that this data will follow a normal replacement policy, meaning it is neither elevated to be removed first, or elevated to be kept. This adds an interesting layer of granularity because while we cannot change the fundamental nature of the read write structure, we can also modify the L2 cache policy of the data we send.
 
-Looking at vector add kernel, we know that the entire process itself is purely streamed data, meaning data is loaded once, and never used or needed again. We can actually modify this cache policy with a ".cs" modifier which hints to the PTX to SASS compiler that the data is not needed once used, allowing it to be evicted first, which should in theory indirectly allow for more data to flow through the L2 cache. The reason this would theoretically allow more data to flow is because the default cache policy evicts the oldest or least recently used, but using the ".cs" should save the cache controller time and compute as it does not need to find/calculate the oldest cache line. 
+Looking at vector add kernel, we know that the entire process it'self is purely streamed data, meaning data is loaded once, and never used or needed again. We can actually modify this cache policy with a ".cs" modifier which hints to the PTX to SASS compiler that the data is not needed once used, allowing it to be evicted first, which should in theory indirectly allow for more data to flow through the L2 cache. The reason this would theoretically allow more data to flow is because the default cache policy evicts the oldest or least recently used, but using the ".cs" should save the cache controller time and compute as it does not need to find/calculate the oldest cache line. 
 
-However, I would imagine this comes at a cost of having to "tag" or use meta-data to convey to the compiler that this specific cache line can be evicted first. I would once again imagine, when n is low the cost of adding this "tag" would likely outweigh its need, whereas if we have a large n size, the "tag" overhead becomes minimal.
+However, I would imagine this comes at a cost of having to "tag" or use meta-data to convey to the compiler that this specific cache line can be evicted first. I would once again imagine, when n is low the cost of adding this "tag" would likely outweigh it's need, whereas if we have a large n size, the "tag" overhead becomes minimal.
 
 There is also another cache policy modifier known as .lu (Last Use). This means once the cache line is utilized, the cache line is disposed of even if the L2 cache is not full. This likely has the same n size use case mentioned for .cs (Cached Streaming).
 
@@ -268,7 +268,7 @@ Well this is very, very exciting! While making a LinkedIn post about the L2 cach
 - Case One: When writing to DRAM, if cache HIT: A single write instruction
 - Case Two: When writing to DRAM, if cache MISS: A single read instruction, followed later by a write instruction
 
-While this does capture some of the nuances of the L2 cache, it over generalizes the behavior of the L2 cache where it assumes all writes are hits because the data we are modifying is either already in the L2 cache, or is in the L2 cache because of a prior implicit read. The data that I mentioned in the section prior actually supports the idea that my old theory did not fully capture how the L2 cache behaves. The specific data that caught my eye was the following: <br>
+While this does capture some of the nuances of the L2 cache, it over generalizes the behavior of the L2 cache where it assumes all writes are hit's because the data we are modifying is either already in the L2 cache, or is in the L2 cache because of a prior implicit read. The data that I mentioned in the section prior actually supports the idea that my old theory did not fully capture how the L2 cache behaves. The specific data that caught my eye was the following: <br>
 
 - lts__t_sector_op_write_hit_rate.pct = 100.00%
 - lts__t_sectors_op_read.sum = 1,538,775
@@ -276,7 +276,7 @@ While this does capture some of the nuances of the L2 cache, it over generalizes
 
 Let's start with why I thought my theory was correct. The 100% hit rate specifically for writes led me to believe that my old theory was true at the time where in either case a hit is always guaranteed. The reason I believe my theory was wrong because of the latter two data points. <br>
 
-If my prior theory was correct, for 25,000,362 sector writes, we would have approximately the same number of reads. This is because naive vector add is perfectly coalesced where a single warp will request to write 128 bytes, which perfectly fits 4 sectors in the DRAM. This means that in my old theory, we should see the same number of reads as the write because each warp will always need to call for new DRAM sectors to modify, but by looking at our data, 1.5M reads is significantly below 25M writes which implies the 1.5M must be some sort of overhead, and not related to the writes done by the L2.
+If my prior theory was correct, for 25,000,362 sector writes, we would have approximately the same number of reads. This is because naive vector add is perfectly coalesced where a single warp will request to write 128 bytes, which perfectly fit's 4 sectors in the DRAM. This means that in my old theory, we should see the same number of reads as the write because each warp will always need to call for new DRAM sectors to modify, but by looking at our data, 1.5M reads is significantly below 25M writes which implies the 1.5M must be some sort of overhead, and not related to the writes done by the L2.
 
 After realizing this inconsistency, I ended up doing some research to understand what might explain this L2 cache behavior. While I wasn't able to find any publicly facing NVIDIA documentation to explain this behavior, the following two sources I believe capture what I saw with my data.
 
@@ -287,7 +287,7 @@ To start off, I'll explain the first source from my prior section (https://forum
 
 Now our second source "Exploring Modern GPU Memory System Design Challenges through Accurate Modeling" (https://arxiv.org/abs/1810.07269) published on arXiv provides empirical evidence for a different write policy named "write-validate" based on the Volta architecture.
 
-- What write-validate does: When the L2 receives a write, it doesn't fetch from DRAM. It instead writes the bytes directly into the sector (in the L2 cache) and sets the corresponding bits modified using a write mask, marking the written sector as valid and modified.
+- What write-validate does: When the L2 receives a write, it doesn't fetch from DRAM. It instead writes the bytes directly into the sector (in the L2 cache) and sets the corresponding bit's modified using a write mask, marking the written sector as valid and modified.
 - What happens at eviction: If the mask is full (all 32 bytes of the sector are written), the sector is written back to the DRAM without reading the sector beforehand. If the mask is partial, meaning the modified bytes were less than 32, then the missing bytes must first be read from the DRAM, then used to produce a complete write mask before writing to the DRAM.
 
 - This brings up the question that upon receiving a write request, does the L2 cache immediately read the DRAM, or does it wait until after the cache line is modified and evicted? The researchers used the following experiment to answer this question. They first modified a few bytes in a sector, and then immediately afterwards, read the same sector which resulted in a miss in the L2 cache. This experiment proves that the L2 cache does not commit a read to the DRAM upon receiving a write, because if it had, the L2 sector would have resulted in a hit by the researchers.
@@ -301,7 +301,7 @@ To confirm this theory using my own data, I did the following experiment with tw
 The Coalesced Write Only kernel was given 10 million threads to write across 10 million elements, and the Uncoalesced Write Only kernel was given 10 million threads to write across 80 million elements to make up for the stride value of 8. If the theory by the paper holds true, we should see the following results:
 
 - For the Coalesced Write Only kernel, the ratio between number of written sectors versus those read should be near zero. This is because all of our writes are coalesced, and for every sector we modify, we always modify all 32 bytes with that sector. This means for every write, we should not have a following read.
-- For the Uncoalesced Write Only kernel, the ratio between the numbers of written sectors versus those read should be near 1:1. This is because for any given sector, we only modify 4 out of the 32 bytes, this means the L2 cache will need to read the DRAM sector to fully complete its write mask before evicting the dirty cache line.<br><br>
+- For the Uncoalesced Write Only kernel, the ratio between the numbers of written sectors versus those read should be near 1:1. This is because for any given sector, we only modify 4 out of the 32 bytes, this means the L2 cache will need to read the DRAM sector to fully complete it's write mask before evicting the dirty cache line.<br><br>
 
 <h3>Results</h3>
 Coalesced Write Only:
@@ -331,14 +331,14 @@ Uncoalesced Write Only Results:
 
 <h3>Summary of Experiment</h3>
 Based off the following results on the Ada Lovelace architecture (RTX 4060), one can theorize that the L2 cache uses a write-validate policy as follows:
-  - If the write(s) performed fully modify all of the 32 bytes of the given sector, the L2 cache does not need to read the sectors' contents in the DRAM, and can properly evict the sector in its write back buffer.
-  - If the write(s) performed do not fully modify the 32 bytes of the given sector, the L2 cache needs to perform a read of the sector in the DRAM before it can properly evict the sector in its write back buffer.
+  - If the write(s) performed fully modify all of the 32 bytes of the given sector, the L2 cache does not need to read the sectors' contents in the DRAM, and can properly evict the sector in it's write back buffer.
+  - If the write(s) performed do not fully modify the 32 bytes of the given sector, the L2 cache needs to perform a read of the sector in the DRAM before it can properly evict the sector in it's write back buffer.
   
 While I've learned that the explicit cost of uncoalesced access is essentially wasting precious bandwidth, it has been very interesting to learn that on the Ada Lovelace architecture, there is also an implicit read cost as well!
 
 Circling back to the origin of this investigation which was why vector add had a ~31% hit rate despite being a fully streaming kernel, I have the following claim. Vector add performs two reads, A and B, and performs a single write C. We've already confirmed using our read only kernel that each A and B read has a hit rate of ~0.07%, which leaves us to understand why the hit rate of our single write is always 100%. 
 
->Note in the section before, I isolate the vector add kernel into their read and write variants isolated. After looking back now with the experience I have reading Nsight Compute, I can see that even the original vector add kernel was hinting that the write hit rate was a 100% using the lts__t_sector_op_write_hit_rate.pct metric, meaning we did not need to isolate those variants. None the less, the process itself was very fun even if it might have been not been needed.
+>Note in the section before, I isolate the vector add kernel into their read and write variants isolated. After looking back now with the experience I have reading Nsight Compute, I can see that even the original vector add kernel was hinting that the write hit rate was a 100% using the lts__t_sector_op_write_hit_rate.pct metric, meaning we did not need to isolate those variants. Nonetheless, the process it'self was very fun even if it might have been not been needed.
 
 The reason why I believe the hit rate of writes is always a 100% is because no matter what case we hit, whether that be coalesced or uncoalesced access, the L2 will always allocate a sector locally on a write. This means once the kernel sends the write request and it reaches the L2 cache, the write always has a way to reach the required DRAM sector. <br><br><br>
 
@@ -400,21 +400,21 @@ The reason why I believe the hit rate of writes is always a 100% is because no m
     
     - The reason why receiving 4 floats at once is very similar to the amount of time it takes to receive a single float. is because of the way the DRAM's architecture is setup. When we request a single 4 byte float, we are essentially eating the cost of reading the DRAM sector for just a 1/4th of the data it holds, although note in reality instruction commands are executed at the warp level so we would actually use all 32 bytes in said sector. When we use Vectorization, we still eat the same cost of reading the DRAM sector, but we are using 16 bytes out of the 32 bytes that sector holds so we are essentially getting more data per read, and again at a warp level we are actually using all of the data contained within this DRAM sector.
 
-While understanding this, I thought why dont we use float8 instead? Because wouldn't 8 floats mean the thread would perfectly request 32 bytes of data, which perfectly fits the 32 byte DRAM sector using just a single memory request? The reasoning why this wouldn't be as efficient is again leads us back to the GPU architecture, specifically to the size of the 128 bit memory bus from the L1 cache to the registers.<br><br>
+While understanding this, I thought why dont we use float8 instead? Because wouldn't 8 floats mean the thread would perfectly request 32 bytes of data, which perfectly fit's the 32 byte DRAM sector using just a single memory request? The reasoning why this wouldn't be as efficient is again leads us back to the GPU architecture, specifically to the size of the 128 bit memory bus from the L1 cache to the registers.<br><br>
 
-If we were to use float8, that would mean each thread requires 8 (floats) * 4 (size of float) = 32 bytes, which converted to bits is 256 bits. This means for every thread, we would would need a very costly two read operations which is very inefficient compared to float4 where we request 4 (floats) * 4 (size of float) = 16 bytes which is 128 bits, which only requires a single read transaction as it fits perfecetly within the L1 to register memory bus. This means the reason why float4 works so great is because we're balancing a fine line where we make sure to utilize all the data we can from a single DRAM read, while also making sure not to tip over into needing two costly DRAM reads. <br><br><br>
+If we were to use float8, that would mean each thread requires 8 (floats) * 4 (size of float) = 32 bytes, which converted to bit's is 256 bit's. This means for every thread, we would would need a very costly two read operations which is very inefficient compared to float4 where we request 4 (floats) * 4 (size of float) = 16 bytes which is 128 bit's, which only requires a single read transaction as it fit's perfectly within the L1 to register memory bus. This means the reason why float4 works so great is because we're balancing a fine line where we make sure to utilize all the data we can from a single DRAM read, while also making sure not to tip over into needing two costly DRAM reads. <br><br><br>
 
 <h3>Vectorization Width Analysis</h3>
 While float8 is not supported in CUDA, so our earlier float8 analysis is just theory, lets do deep dive into float, float2, float4 and the theoretical float8 to understand the best use case for each.
 
 - float:
-   - A thread uses a single LDG.32 bit load instruction for a 4 byte float, on a warp scale thats 128 bytes. These 128 bytes require a single cycle to be processed by the 128 byte L2 cache line. These 128 bytes fit into the 4 KB row buffer of the DRAM, and also perfectly fits into four 32 byte sectors of the DRAM.
+   - A thread uses a single LDG.32 bit load instruction for a 4 byte float, on a warp scale thats 128 bytes. These 128 bytes require a single cycle to be processed by the 128 byte L2 cache line. These 128 bytes fit into the 4 KB row buffer of the DRAM, and also perfectly fit's into four 32 byte sectors of the DRAM.
  - float2:
-   - A thread uses a single LDG.64 load instruction for a 8 byte float2, on a warp scale thats 256 bytes. These 256 bytes require two cycles to be processed by the 128 byte L2 cache line. These 256 bytes fit into the 4 KB row buffer of the DRAM, and also perfectly fits into eight 32 byte sectors of the DRAM.
+   - A thread uses a single LDG.64 load instruction for a 8 byte float2, on a warp scale thats 256 bytes. These 256 bytes require two cycles to be processed by the 128 byte L2 cache line. These 256 bytes fit into the 4 KB row buffer of the DRAM, and also perfectly fit's into eight 32 byte sectors of the DRAM.
  - float4:
-   - A thread uses a single LDG.128 load instruction for a 16 byte float4, on a warp scale thats 512 bytes. These 512 bytes require 4 cycles to be processed by the 128 byte L2 cache line. These 512 bytes fit into the 4 KB row buffer of the DRAM, and also perfectly fits into sixteen 32 byte sectors of the DRAM.
+   - A thread uses a single LDG.128 load instruction for a 16 byte float4, on a warp scale thats 512 bytes. These 512 bytes require 4 cycles to be processed by the 128 byte L2 cache line. These 512 bytes fit into the 4 KB row buffer of the DRAM, and also perfectly fit's into sixteen 32 byte sectors of the DRAM.
  - float8:
-   - A thread uses two LDG.128 load instructions for a 32 byte float8, on a warp scale thats 1024 bytes. These 1024 bytes require 8 cycles to be processed by the 128 byte L2 cache line. These 1024 bytes fit into the 4 KB row buffer of the DRAM, and also perfectly fits into thirty two 32 byte sectors of the DRAM.
+   - A thread uses two LDG.128 load instructions for a 32 byte float8, on a warp scale thats 1024 bytes. These 1024 bytes require 8 cycles to be processed by the 128 byte L2 cache line. These 1024 bytes fit into the 4 KB row buffer of the DRAM, and also perfectly fit's into thirty two 32 byte sectors of the DRAM.
 
  Now lets dig into the pros and cons of each.
  
@@ -443,7 +443,7 @@ While float8 is not supported in CUDA, so our earlier float8 analysis is just th
      - Great compared to float because 4x less instruction pressure
      - Great compared to float2 because 2x less instruction pressure
    - Cons
-     - Compared to float, modererate increased register pressure
+     - Compared to float, moderate increased register pressure
      - Compared to float2, slight increased register pressure
    - Use Case
      - If we want to trade moderate increase in register pressure for a moderate decrease in instruction pressure.
@@ -451,7 +451,7 @@ While float8 is not supported in CUDA, so our earlier float8 analysis is just th
         
  **Float8:**
    - Inefficient as it requires two LDG.128 loads instructions.
-   - Upon looking into why an LDG.256 doesn't exist, its likely because the width of the data that can move from the register to the load store unit is 128 bits (matching our prior LDG.128 instruction).
+   - Upon looking into why an LDG.256 doesn't exist, it's likely because the width of the data that can move from the register to the load store unit is 128 bit's (matching our prior LDG.128 instruction).
       
       
      
@@ -460,9 +460,9 @@ While float8 is not supported in CUDA, so our earlier float8 analysis is just th
 
 **1. Significant Decrease in Eligible Warps Per Scheduler [warp] (-56.40%): 0.06 -> 0.03**
   - Why this happened:
-    - To use Vectorization within this context where we do not use grid stride, we must launch n/4 threads. This means although the technique itself does not reduce parallelism, to ensure we compute all the given elements and nothing less and nothing more, we must launch fewer warps compared to the naive which means less warps to switch to for the SM when one stalls.<br><br>
+    - To use Vectorization within this context where we do not use grid stride, we must launch n/4 threads. This means although the technique it'self does not reduce parallelism, to ensure we compute all the given elements and nothing less and nothing more, we must launch fewer warps compared to the naive which means less warps to switch to for the SM when one stalls.<br><br>
       
-    > _Note: Vectorization itself does not reduce parallelism, rather without grid stride we must launch a quarter of the threads compared to the naive. This means the reduction in parallelism is because of the launch condition and not the technique itself._
+    > _Note: Vectorization it'self does not reduce parallelism, rather without grid stride we must launch a quarter of the threads compared to the naive. This means the reduction in parallelism is because of the launch condition and not the technique it'self._
     
       <br><br>
 
@@ -490,7 +490,7 @@ While float8 is not supported in CUDA, so our earlier float8 analysis is just th
 1. Significant Instruction Reduction (-82.37%): 100M -> 17.5M
    - Why this happened:
      - Vectorization: Requests 4 floats with a single memory transaction, rather than four separate memory transactions like in this naive, reducing the number of instructions.
-     - Grid Stride: Grid Stride allows for a significant reduction in executed instructions but a more implicit and interesting way. When we look at the source counter of the naive kernel, 18.75% of all instructions are executed because of the _int i = blockIdx.x * blockDim.x + threadIdx.x_, this allows to get the threads id relative to the block its in. The interesting thing is for our naive kernel has 200,000,000 threads, which means every single thread executing this. With grid stride though, we are using 144 blocks which means a significant reduction in the number of times we need to calculate this, which is supported by the grid stride instructions executed source counter for this line being just 0.02%.
+     - Grid Stride: Grid Stride allows for a significant reduction in executed instructions but a more implicit and interesting way. When we look at the source counter of the naive kernel, 18.75% of all instructions are executed because of the _int i = blockIdx.x * blockDim.x + threadIdx.x_, this allows to get the threads id relative to the block it's in. The interesting thing is for our naive kernel has 200,000,000 threads, which means every single thread executing this. With grid stride though, we are using 144 blocks which means a significant reduction in the number of times we need to calculate this, which is supported by the grid stride instructions executed source counter for this line being just 0.02%.
 
 
 2. Higher Occupancy (+7.80%): 85.36% -> 92.02%
@@ -550,13 +550,13 @@ While float8 is not supported in CUDA, so our earlier float8 analysis is just th
        - Increase parallelism to increase latency hiding by increasing the number of eligible warps per scheduler
        - Reduce memory dependencies to decrease long scoreboard stalls
        - Reduce computation dependency to either reduce long scoreboard stalls, or allow for more active occupancy by reducing register count if that is the limiting factor.
-     - I believe what the ILP=4 kernel is doing is the first, but not using more warps, but rather using latency hiding at the instruction level. In hindsight, I suppose the name makes sense: schedulers can hide latency schedulers can hide latency by switching to different warps, but ILP allows for latency hiding at the thread/instruction level.
+     - I believe what the ILP=4 kernel is doing is the first, but not using more warps, but rather using latency hiding at the instruction level. In hindsight, I suppose the name makes sense: schedulers can hide latency by switching to different warps, but ILP allows for latency hiding at the thread/instruction level.
     
      - The reason why the two statistics I chose stood out to me and why I think they're a positive is the following
        - A decrease in IPC by -16.89%
-         - Now usually a decrease in IPC indicates that we are executing less instructions per cycle meaning we are doing less work per cycle. The thing that was interesting to me though was compared to every other variant of vector add which often lost 50-60% of IPC, the ILP kernel only lost 16.89%. This tells me while the other kernels suffered a loss in IPC because of the technique itself (e.g. grid stride or vectorized), ILP may be suffering not from the technique itself but because we are launching only a fourth of the number of blocks as the naive. This is important because the more blocks we have the more parallelism we can achieve, at least until of course we get diminishing returns and the overhead of adding blocks becomes significant.
+         - Now usually a decrease in IPC indicates that we are executing less instructions per cycle meaning we are doing less work per cycle. The thing that was interesting to me though was compared to every other variant of vector add which often lost 50-60% of IPC, the ILP kernel only lost 16.89%. This tells me while the other kernels suffered a loss in IPC because of the technique it'self (e.g. grid stride or vectorized), ILP may be suffering not from the technique it'self but because we are launching only a fourth of the number of blocks as the naive. This is important because the more blocks we have the more parallelism we can achieve, at least until of course we get diminishing returns and the overhead of adding blocks becomes significant.
        - A increase in Eligible Warps per Scheduler by +0.17%
-         - Now this is the statistic that makes me think my theory might be true. Every other kernel variant had more occupancy than the naive, but suffered significantly when it came to the number of eligible warps it had, but ILP is the opposite. This makes me think again the limiting factor for this kernel is not the technique itself, but rather the schedulers limited number of blocks to switch to compared to the naive. <br>
+         - Now this is the statistic that makes me think my theory might be true. Every other kernel variant had more occupancy than the naive, but suffered significantly when it came to the number of eligible warps it had, but ILP is the opposite. This makes me think again the limiting factor for this kernel is not the technique it'self, but rather the schedulers limited number of blocks to switch to compared to the naive. <br>
        - This makes me think that if ILP were to have the same number of blocks as the naive, it may perform better than naive as both will have the same level of warp parallelism.
 
 
@@ -592,9 +592,9 @@ The vector add kernel is memory bound. Any optimizations to be made to improve t
 Now this was one of the most enjoyable parts of this project. While at first this project started as a way to learn grid stride, vectorization and ILP, it slowly became a vehicle to understand how memory bound kernels operate.<br><br>
 
 From this project I learned:
-- When the write we commit to the L2 cache does not modify the entire 32 byte sector, the L2 cache must read the DRAM sector first before writing to the DRAM. I find this implicit read, and the process it took for me to discover it genuinely enjoyable and exciting. The idea of having this niche detail in my mental model excites me for the future when I will be able to use it. I can already imagine during say sparse writes, knowing this is the difference between performing a single write instruction, or a read followed by a write.
+- When the write we commit to the L2 cache does not modify the entire 32 byte sector, the L2 cache must read the DRAM sector first before writing to the DRAM. I find this implicit read, and the process I took or the process of discovering it genuinely enjoyable and exciting. The idea of having this niche detail in my mental model excites me for the future when I will be able to use it. I can already imagine during say sparse writes, knowing this is the difference between performing a single write instruction, or a read followed by a write.
   
-- Another thing I enjoyed learning about was the intentionality of the hardware. In past projects where I've built things like full stack applications to ML models, there has always been a layer of abstraction that has prevented me from digging deep in to finding out why something worked the specific way that it did. When it comes to CUDA and low level systems work, quite literally everything has a reason. Whether that be why the cache line is 128 bytes, and how it perfectly fits 4 sectors of the DRAM, or the reason why float4 is so spectacular is because its the perfect tipping point where we can maximize the 128 bit register file using a single LDG.128 instruction, it all has a reason.
+- Another thing I enjoyed learning about was the intentionality of the hardware. In past projects where I've built things like full stack applications to ML models, there has always been a layer of abstraction that has prevented me from digging deep in to finding out why something worked the specific way that it did. When it comes to CUDA and low level systems work, quite literally everything has a reason. Whether that be why the cache line is 128 bytes, and how it perfectly fit's 4 sectors of the DRAM, or the reason why float4 is so spectacular is because it's the perfect tipping point where we can maximize the 128 bit register file using a single LDG.128 instruction, it all has a reason.
 
   The L2 cache investigation took me two days, and then a few days later I had realized I was wrong and I had to spend another day understanding why. While this might seem mundane at first, being able to connect how the software beautifully uses the hardware to maximize throughput has genuinely, without a single doubt, been the best computer science experience as an undergraduate student. While I have not taken a parallel programming class, so I am unsure about the exact depth of which these many layers interact, and how we can use them to our advantage, I have no doubt that learning and updating my mental model will genuinely be enjoyable.
 
@@ -605,13 +605,13 @@ From this project I learned:
 
 If I were to restart this vector add project from scratch with the knowledge I have now (and any project from now on) this would be my process:
 
-**1. I would dissect the vector add equation itself before I even think to write a single piece of code. This gives me the theoretical FLOPs/byte. This is important because before we even start, we should understand what our expected bottlenecks will be.**
+**1. I would dissect the vector add equation it'self before I even think to write a single piece of code. This gives me the theoretical FLOPs/byte. This is important because before we even start, we should understand what our expected bottlenecks will be.**
 
 $$ \text{Arithmetic Intensity} (AI) = \frac{\text{Total Operations (FLOPs)}}{\text{Total Bytes Transferred (Memory Traffic)}} $$
 
   - For vector add we concluded that it performs two reads (A and B) a single write (C) and performs a single floating point operation (add). This results in a FLOPs/byte of 0.08, which between compute and memory bound, this tells us our kernel is memory bound.
   
-  - While this provides a great insight into what our bottleneck might be between compute and memory, it turns out theres a even sneakier possible bottleneck. It turns out another potential bottleneck is actually latency! Latency bound is when the number of instructions being performed is significantly more than the L2 cache can handle. From my current understanding, this results in the write-back buffer in the L2 cache to be very saturated to the point where if the write buffer is full, the L2 cache has to stop all reads and write warps to evict all of the dirty cache lines.<br><br><br><br><br><br>
+  - While this provides a great insight into what our bottleneck might be between compute and memory, it turns out there's an even sneakier possible bottleneck. It turns out another potential bottleneck is actually latency! Latency bound is when the number of instructions being performed is significantly more than the L2 cache can handle. From my current understanding, this results in the write-back buffer in the L2 cache to be very saturated to the point where if the write buffer is full, the L2 cache has to stop all reads and write warps to evict all of the dirty cache lines.<br><br><br><br><br><br>
 
 
 
@@ -623,7 +623,7 @@ $$ \text{Arithmetic Intensity} (AI) = \frac{\text{Total Operations (FLOPs)}}{\te
 **2. Once the equation is analyzed, I would do the following which I recently learned about. This process is a lot more complicated (which makes it a lot more interesting), but offers a significant theoretical view into our kernel.**
 
 <h3>A. DRAM Bandwidth Bound </h3>
-How long would the kernel take if the DRAM delivered bytes at its theoretical maximum speed (seconds)?<br><br>
+How long would the kernel take if the DRAM delivered bytes at it's theoretical maximum speed (seconds)?<br><br>
 
 
 $$ T_{DRAM} = \frac{\text{Total Bytes Transferred}}{\text{Peak DRAM Bandwidth}} $$
@@ -643,7 +643,7 @@ Needed information to calculate:
 
 
 <h3>B. Compute Bound </h3>
-How long would the kernel take if every core computed at its theoretical maximum (seconds)?<br><br>
+How long would the kernel take if every core computed at it's theoretical maximum (seconds)?<br><br>
 
 
 $$ T_{Compute} = \frac{\text{Total FLOPs}}{\text{Peak FLOPS}} $$
@@ -691,7 +691,7 @@ $$ T_{L2} = \frac{\text{Total Bytes through L2}}{\text{L2 Bandwidth}} $$
 
 
 Needed information to calculate:
-- **Kernel:** Total bytes passing through L2, can differ from DRAM due to write-validate reads or cache hits
+- **Kernel:** Total bytes passing through L2, can differ from DRAM due to write-validate reads or cache hit's
 - **Hardware:** L2 bandwidth
 
 
@@ -729,7 +729,7 @@ $$ \text{LSU Issue Rate} = \text{LSUs per SM} \times \text{Num SMs} \times \text
 
 Needed information to calculate:
 - **Kernel:** N, Memory operations per element (loads + stores)
-- **Hardware:** Load Store Units per SM, Number of SMs, Clock speed, Warp size
+- **Hardware:** Load Store Unit's per SM, Number of SMs, Clock speed, Warp size
 
 <br><br><br>
 
@@ -829,88 +829,88 @@ With this dissected view of our bottleneck, we can actually infer what we can do
 - Decreasing the elements
   - For vector add, we need every value we have to properly make sure all data is summed correctly, so this is not optimal.
 - Increase the DRAM Bandwidth
-  - To increase the DRAM Bandwidth, we would have to change the hardware, which can be helpful, but there are more cost efficient approaches by optimizing the software itself.
+  - To increase the DRAM Bandwidth, we would have to change the hardware, which can be helpful, but there are more cost efficient approaches by optimizing the software it'self.
 - Decrease the size of the elements
   - Now this is something we can theoretically do! Rather than needing the full precision of the float type, we can trade precision for a smaller byte value! After looking into it, this what float types are offered.<br><br>
   
   - Standard
     - FP32 (Single precision)
-      - Size: 32 bits
-      - Precision: ~7 decimal digits
+      - Size: 32 bit's
+      - Precision: ~7 decimal digit's
       - Range: 10^-38 to 10^38
       - Example: 3.1415926 <br><br>
     - FP16 (Half precision)
-      - Size: 16 bits
-      - precision: ~3 decimal digits
+      - Size: 16 bit's
+      - precision: ~3 decimal digit's
       - Range: 5.96e-8 to 65,504
       - Example: 3.141<br><br>
   - Ampere and later
     - BF16 (Brain Float)
-      - Size: 16 bits
-      - precision: ~2 decimal digits
+      - Size: 16 bit's
+      - precision: ~2 decimal digit's
       - Range: 10^-38 to 10^38
       - Example: 3.14<br><br>
   - Hopper and later
-    - FP8 (4 Exponent Bits, 3 Mantissa Bits)
-      - Size: 8 bits
+    - FP8 (4 Exponent Bit's, 3 Mantissa Bit's)
+      - Size: 8 bit's
       - precision: ~1 decimal digit
       - Range: -448 to 448
       - Example: 3.1<br><br>
-    - FP8 (5 Exponent  Bits, 2 Mantissa Bits)
-      - Size: 8 bits
+    - FP8 (5 Exponent  Bit's, 2 Mantissa Bit's)
+      - Size: 8 bit's
       - precision: Whole numbers
       - Range: -57,344 to 57,344
       - Example: 12,288<br><br>
   - Blackwell
     - FP6 (3 Exponent, 2 Mantissa)
-      - Size: 6 bits
+      - Size: 6 bit's
       - precision: Whole numbers
       - Range: -28 to 28
       - Example: 52<br><br>
-    - FP4 (2 Exponent Bits and 1 Mantissa Bit)
-      - Size: 4 bits
+    - FP4 (2 Exponent Bit's and 1 Mantissa Bit)
+      - Size: 4 bit's
       - precision: 16 values only
       - Range: 0, 0.5, 1, 1.5, 2, 3, 4, 6 and their negative counterparts.
       - Example: -0.5<br><br>
 
-> **A lesson into Exponent and Mantissa Bits**
+> **A lesson into Exponent and Mantissa Bit's**
 >
-> While researching the different float types, I will be honest, I did not know what exponent or Mantissa bits were. After looking into it, this is my current understanding of them, and I hope those who are also new to the different float types, that this provides a helpful way to understand them.
+> While researching the different float types, I will be honest, I did not know what exponent or Mantissa bit's were. After looking into it, this is my current understanding of them, and I hope those who are also new to the different float types, that this provides a helpful way to understand them.
 >
-> Mantissa Bits are the bits that actually say how many digits do we hold? Mantissa bits determine whether our value type can hold say the value "1231923" or just the value "123"
+> Mantissa Bit's are the bit's that actually say how many digit's do we hold? Mantissa bit's determine whether our value type can hold say the value "1231923" or just the value "123"
 > 
-> Exponent Bits are the bits that actually say now where does the decimal point go? Say we have a negative exponent bit, we can turn the "1231923" value to "123.1923" or to "0.00001231923"
+> Exponent Bit's are the bit's that actually say now where does the decimal point go? Say we have a negative exponent bit, we can turn the "1231923" value to "123.1923" or to "0.00001231923"
 >
-> One question I had was, how are the extra 0.0000 values stored? Wouldnt that result in needing more memory? This is where the beauty of the exponent bit comes in. Say we have the the orginal number 0.00001231923, the way the computer actually stores the value is this following
+> One question I had was, how are the extra 0.0000 values stored? Wouldnt that result in needing more memory? This is where the beauty of the exponent bit comes in. Say we have the the original number 0.00001231923, the way the computer actually stores the value is this following
 > - Mantissa value: 1231923
 > - Exponent Value: -11
-> Using these values, when the computer wants the same number again, it can use the mantissa value of 1231923, then multiply it by 10^-11, and now we're back to our original number of 0.00001231923 without needing additional bits to store the leading zeros!
+> Using these values, when the computer wants the same number again, it can use the mantissa value of 1231923, then multiply it by 10^-11, and now we're back to our original number of 0.00001231923 without needing additional bit's to store the leading zeros!
 > 
 > _Note: In reality, the mantissa would store the value as 1.231923 which would result in our exponent value being -5, but for the sake of learning, we will treat it as an integer._
 >
 >
 > While this is an amazing system to store values, there is a drawback that we should be aware of.
 >
-> Say we can hold a single digit using our mantissa bit where we can hold 1, 2, 3, 4, 5, 6, 7, 8 and 9. Now lets say we apply our exponent bit, this lets us represent those single digits values into say double digit values such as 10, 20, 30, 40, 50, 60, 70, 80 and 90. As we can see, we are unable to express the values inbetween our numbers. Say we had a value of 76, the computer would have to round to the nearest value we can express which would be 80.
+> Say we can hold a single digit using our mantissa bit where we can hold 1, 2, 3, 4, 5, 6, 7, 8 and 9. Now lets say we apply our exponent bit, this lets us represent those single digit's values into say double digit values such as 10, 20, 30, 40, 50, 60, 70, 80 and 90. As we can see, we are unable to express the values inbetween our numbers. Say we had a value of 76, the computer would have to round to the nearest value we can express which would be 80.
 > 
 > Now what if our exponent bit allows us to express the hundreds place? Now our values can represent 100, 200, 300, 400, 500, 600, 700, 800 and 900. This means the values we are unable to express are even larger, and say we have a value of 151, the computer must round to the nearest digit which is 200. This means the greater our values from zero, the larger these jumps between numbers become. Now in a field like machine learning where in a neural network during back propagation where absolute precision matters, we can imagine why this may be a problem.
 >
 >
 >
-> Now to solve this we can either trade a exponent bit for a mantissa bit. This would allow us to have two digits allowing for more granularity, but we lose some of our range. If we continue our last example, this would mean we can express numbers like 76 or 15, but we lose our ability to represent the hundreds place.
+> Now to solve this we can either trade a exponent bit for a mantissa bit. This would allow us to have two digit's allowing for more granularity, but we lose some of our range. If we continue our last example, this would mean we can express numbers like 76 or 15, but we lose our ability to represent the hundreds place.
 >
-> Another way to solve this is to increase the size of the type of value itself so rather trading a mantissa bit for an exponent, we can increase the total number of bits.
+> Another way to solve this is to increase the size of the type of value it'self so rather trading a mantissa bit for an exponent, we can increase the total number of bit's.
 >
 > _Note: We assumed a base 10 for our exponent values, but in reality the computer uses a base of 2._
 
-On my current RTX 4060 (Ada Lovelace), FP32, FP16/BF16 and FP8 are supported. To test whether changing our element size from 32 bits to 8 bits increasing the DRAM Memory throughput, we can compare FP32 vs FP8 for vector add. After comparing the FP32 and FP8 versions, the FP8 consistently outperforms the FP32! 
+On my current RTX 4060 (Ada Lovelace), FP32, FP16/BF16 and FP8 are supported. To test whether changing our element size from 32 bit's to 8 bit's increasing the DRAM Memory throughput, we can compare FP32 vs FP8 for vector add. After comparing the FP32 and FP8 versions, the FP8 consistently outperforms the FP32! 
 
 - The FP8:
   - Increases memory throughput by ~2%
   - Increases compute throughput by ~30%
   - Decreases duration by 30%
 
-This is very interesting, because the idea of reducing the byte size was not from profiling the kernel, but rather first calculating the theoretical bottleneck from our equations, and then specifically targeting what can be done to reduce the bottleneck! The reason that the equations derived are so exciting is because its a framework that can be applied to any future kernel! 
+This is very interesting, because the idea of reducing the byte size was not from profiling the kernel, but rather first calculating the theoretical bottleneck from our equations, and then specifically targeting what can be done to reduce the bottleneck! The reason that the equations derived are so exciting is because it's a framework that can be applied to any future kernel! 
 
 <h1>Conclusion</h1>
 This project first started as a way for me to learn the memory hierarchy, how to open and read Nsight Compute, and how various optimization techniques such as grid stride, vectorization and ILP would help vector add. I expected it to take maximum a week to finish.
@@ -919,5 +919,5 @@ After learning that none of the optimization techniques I used help, this projec
 
 I am also eternally grateful for this project because I feel as though I've finally found a niche I can imagine a career in. What was supposed to be a 5 page simple Github project on how vector add works, turned into what I'm now looking back at is a 40 page document. I did not mean to spend a month on this project, nor to make it 40 pages, but the genuine excitement of being able to dig deep into why something behaves the way it does made it impossible to stop. From the week long 31% L2 cache investigation to the "holy macaroni" moment I had where right before I went to bed I finally connected the dots and I just had to write something down to make sure I didn't forget, the entire process has been the most fun. I've had with computer science. I am excited for my next kernel, and that feeling of confusion to investigating to understanding and updating my mental model is something I am wanting to and excited to chase.
 
-While I'm sure this document could have been polished towards something more concrete like an official report where only the right answers are displayed, I feel it's important to demonstrate that not all theories are correct, and its the thought process involved, experimentation and updating of the mental model that matters the most. I feel this especially true as a beginner where often our mental models lack, and it's perfectly okay to be wrong, and it should be encouraged. To any fellow beginners, or future beginners, I hope this document provides both insight into how CUDA works, and the comfort of knowing its okay to be wrong!
+While I'm sure this document could have been polished towards something more concrete like an official report where only the right answers are displayed, I feel it's important to demonstrate that not all theories are correct, and it's the thought process involved, experimentation and updating of the mental model that matters the most. I feel this especially true as a beginner where often our mental models lack, and it's perfectly okay to be wrong, and it should be encouraged. To any fellow beginners, or future beginners, I hope this document provides both insight into how CUDA works, and the comfort of knowing it's okay to be wrong!
 
