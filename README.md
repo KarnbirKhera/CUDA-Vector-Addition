@@ -330,6 +330,9 @@ The reason why I believe the hit rate of write is always a 100% is because no ma
 
 
 <br><br><br><br>
+
+<h1>Comparing Optimization Techniques vs Naive</h1>
+
 <h2>Grid Stride vs Naive</h2>
 
 **Performance Result:** 3.07% slower than the Naive <br>
