@@ -287,7 +287,7 @@ To start off, I'll explain the first source from my prior section (https://forum
 
 Now our second source "Exploring Modern GPU Memory System Design Challenges through Accurate Modeling" (https://arxiv.org/abs/1810.07269) published on arXiv provides empirical evidence for a different write policy named "write-validate" based on the Volta architecture.
 
-- What write-validate does: When the L2 receives a write, it doesn't fetch from DRAM. It instead writes the bytes directly into the sector (in the L2 cache) and sets the corresponding bit's modified using a write mask, marking the written sector as valid and modified.
+- What write-validate does: When the L2 receives a write, it doesn't fetch from DRAM. It instead writes the bytes directly into the sector (in the L2 cache) and sets the corresponding bits modified using a write mask, marking the written sector as valid and modified.
 - What happens at eviction: If the mask is full (all 32 bytes of the sector are written), the sector is written back to the DRAM without reading the sector beforehand. If the mask is partial, meaning the modified bytes were less than 32, then the missing bytes must first be read from the DRAM, then used to produce a complete write mask before writing to the DRAM.
 
 - This brings up the question that upon receiving a write request, does the L2 cache immediately read the DRAM, or does it wait until after the cache line is modified and evicted? The researchers used the following experiment to answer this question. They first modified a few bytes in a sector, and then immediately afterwards, read the same sector which resulted in a miss in the L2 cache. This experiment proves that the L2 cache does not commit a read to the DRAM upon receiving a write, because if it had, the L2 sector would have resulted in a hit by the researchers.
@@ -402,7 +402,7 @@ The reason why I believe the hit rate of writes is always a 100% is because no m
 
 While understanding this, I thought why dont we use float8 instead? Because wouldn't 8 floats mean the thread would perfectly request 32 bytes of data, which perfectly fit's the 32 byte DRAM sector using just a single memory request? The reasoning why this wouldn't be as efficient is again leads us back to the GPU architecture, specifically to the size of the 128 bit memory bus from the L1 cache to the registers.<br><br>
 
-If we were to use float8, that would mean each thread requires 8 (floats) * 4 (size of float) = 32 bytes, which converted to bit's is 256 bit's. This means for every thread, we would would need a very costly two read operations which is very inefficient compared to float4 where we request 4 (floats) * 4 (size of float) = 16 bytes which is 128 bit's, which only requires a single read transaction as it fit's perfectly within the L1 to register memory bus. This means the reason why float4 works so great is because we're balancing a fine line where we make sure to utilize all the data we can from a single DRAM read, while also making sure not to tip over into needing two costly DRAM reads. <br><br><br>
+If we were to use float8, that would mean each thread requires 8 (floats) * 4 (size of float) = 32 bytes, which converted to bits is 256 bits. This means for every thread, we would would need a very costly two read operations which is very inefficient compared to float4 where we request 4 (floats) * 4 (size of float) = 16 bytes which is 128 bits, which only requires a single read transaction as it fit's perfectly within the L1 to register memory bus. This means the reason why float4 works so great is because we're balancing a fine line where we make sure to utilize all the data we can from a single DRAM read, while also making sure not to tip over into needing two costly DRAM reads. <br><br><br>
 
 <h3>Vectorization Width Analysis</h3>
 While float8 is not supported in CUDA, so our earlier float8 analysis is just theory, lets do deep dive into float, float2, float4 and the theoretical float8 to understand the best use case for each.
@@ -451,7 +451,7 @@ While float8 is not supported in CUDA, so our earlier float8 analysis is just th
         
  **Float8:**
    - Inefficient as it requires two LDG.128 loads instructions.
-   - Upon looking into why an LDG.256 doesn't exist, it's likely because the width of the data that can move from the register to the load store unit is 128 bit's (matching our prior LDG.128 instruction).
+   - Upon looking into why an LDG.256 doesn't exist, it's likely because the width of the data that can move from the register to the load store unit is 128 bits (matching our prior LDG.128 instruction).
       
       
      
