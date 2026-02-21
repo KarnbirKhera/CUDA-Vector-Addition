@@ -871,4 +871,9 @@ On my current RTX 4060 (Ada Lovelace), FP32, FP16/BF16 and FP8 are supported. To
   - Increases compute throughput by ~30%
   - Decreases duration by 30%
 
-This is very interesting, because the idea of reducing the byte size was not from profiling the kernel, but rather first calculating the theoretical bottleneck from our equations, and then specifically targetting what can be done to reduce the bottleneck!
+This is very interesting, because the idea of reducing the byte size was not from profiling the kernel, but rather first calculating the theoretical bottleneck from our equations, and then specifically targetting what can be done to reduce the bottleneck! The reason that the equations derived are so exciting is because its a framework that can be applied to any future kernel! 
+
+<h1>Conclusion</h1>
+This project first started as way for me to learn the memory hierarchy, how to open and read Nsight compute, and how various optimization techniques such as grid stride, vectorization and ILP would help vector add.
+
+After learning that none of the optimization techniques I used help, this project transitioned from learning just how to code in a parallel programming manner, but rather a deep dive into why GPUs behave the way they do. This first started by understanding how these techniques impacted the memory dynamics of vector add which taught me 
