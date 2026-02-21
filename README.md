@@ -97,7 +97,7 @@ _Increased register pressure can lead to lower occupancy, if register count per 
 
 <br><br><br>
 <h1>A Deeper Dive into Vector Addition</h1>
-To better understand the performance of each of the optimization techniques, an analysis into the vector addition operation it'self provides a great starting point.
+To better understand the performance of each of the optimization techniques, an analysis into the vector addition operation itself provides a great starting point.
 
 <br>
 <p align="center">
@@ -183,7 +183,7 @@ We can see from the Nsight Compute, the L2 cache hit rate is ~0.07%, which is su
 <img width="451" height="515" alt="image" src="https://github.com/user-attachments/assets/564b7637-e51f-4ec8-841c-703378b9e2ba" />
 <img width="1327" height="445" alt="image" src="https://github.com/user-attachments/assets/dc05e6a7-6fc3-4cc9-a36a-f4a7ff4ef0f7" /> <br>
 
-We can see from the Nsight Compute, the L2 cache hit rate is ~96%, which supported by the detailed L2 report. This percentage is made up of 1,538,775 reads and 25,000,362 writes (C[i]). The 1,538,775 reads is very interesting as the code it'self has no A[i] and B[i] reads. 
+We can see from the Nsight Compute, the L2 cache hit rate is ~96%, which supported by the detailed L2 report. This percentage is made up of 1,538,775 reads and 25,000,362 writes (C[i]). The 1,538,775 reads is very interesting as the code itself has no A[i] and B[i] reads. 
 
 <br><br>
 After further analysis:<br>
@@ -238,7 +238,7 @@ Rather than needing to re-open cache lines, the L2 cache gathers all the needed 
 
 Now going back to the STG.E, it turns out after more research the .E is actually a modifier for the STG command when it comes to the caching policy. The .E represents that this data will follow a normal replacement policy, meaning it is neither elevated to be removed first, or elevated to be kept. This adds an interesting layer of granularity because while we cannot change the fundamental nature of the read write structure, we can also modify the L2 cache policy of the data we send.
 
-Looking at vector add kernel, we know that the entire process it'self is purely streamed data, meaning data is loaded once, and never used or needed again. We can actually modify this cache policy with a ".cs" modifier which hints to the PTX to SASS compiler that the data is not needed once used, allowing it to be evicted first, which should in theory indirectly allow for more data to flow through the L2 cache. The reason this would theoretically allow more data to flow is because the default cache policy evicts the oldest or least recently used, but using the ".cs" should save the cache controller time and compute as it does not need to find/calculate the oldest cache line. 
+Looking at vector add kernel, we know that the entire process itself is purely streamed data, meaning data is loaded once, and never used or needed again. We can actually modify this cache policy with a ".cs" modifier which hints to the PTX to SASS compiler that the data is not needed once used, allowing it to be evicted first, which should in theory indirectly allow for more data to flow through the L2 cache. The reason this would theoretically allow more data to flow is because the default cache policy evicts the oldest or least recently used, but using the ".cs" should save the cache controller time and compute as it does not need to find/calculate the oldest cache line. 
 
 However, I would imagine this comes at a cost of having to "tag" or use meta-data to convey to the compiler that this specific cache line can be evicted first. I would once again imagine, when n is low the cost of adding this "tag" would likely outweigh it's need, whereas if we have a large n size, the "tag" overhead becomes minimal.
 
@@ -338,7 +338,7 @@ While I've learned that the explicit cost of uncoalesced access is essentially w
 
 Circling back to the origin of this investigation which was why vector add had a ~31% hit rate despite being a fully streaming kernel, I have the following claim. Vector add performs two reads, A and B, and performs a single write C. We've already confirmed using our read only kernel that each A and B read has a hit rate of ~0.07%, which leaves us to understand why the hit rate of our single write is always 100%. 
 
->Note in the section before, I isolate the vector add kernel into their read and write variants isolated. After looking back now with the experience I have reading Nsight Compute, I can see that even the original vector add kernel was hinting that the write hit rate was a 100% using the lts__t_sector_op_write_hit_rate.pct metric, meaning we did not need to isolate those variants. Nonetheless, the process it'self was very fun even if it might have been not been needed.
+>Note in the section before, I isolate the vector add kernel into their read and write variants isolated. After looking back now with the experience I have reading Nsight Compute, I can see that even the original vector add kernel was hinting that the write hit rate was a 100% using the lts__t_sector_op_write_hit_rate.pct metric, meaning we did not need to isolate those variants. Nonetheless, the process itself was very fun even if it might have been not been needed.
 
 The reason why I believe the hit rate of writes is always a 100% is because no matter what case we hit, whether that be coalesced or uncoalesced access, the L2 will always allocate a sector locally on a write. This means once the kernel sends the write request and it reaches the L2 cache, the write always has a way to reach the required DRAM sector. <br><br><br>
 
@@ -456,13 +456,13 @@ While float8 is not supported in CUDA, so our earlier float8 analysis is just th
       
      
 
-<h3>Why it's slower</h3>
+<h3>Why its slower</h3>
 
 **1. Significant Decrease in Eligible Warps Per Scheduler [warp] (-56.40%): 0.06 -> 0.03**
   - Why this happened:
-    - To use Vectorization within this context where we do not use grid stride, we must launch n/4 threads. This means although the technique it'self does not reduce parallelism, to ensure we compute all the given elements and nothing less and nothing more, we must launch fewer warps compared to the naive which means less warps to switch to for the SM when one stalls.<br><br>
+    - To use Vectorization within this context where we do not use grid stride, we must launch n/4 threads. This means although the technique itself does not reduce parallelism, to ensure we compute all the given elements and nothing less and nothing more, we must launch fewer warps compared to the naive which means less warps to switch to for the SM when one stalls.<br><br>
       
-    > _Note: Vectorization it'self does not reduce parallelism, rather without grid stride we must launch a quarter of the threads compared to the naive. This means the reduction in parallelism is because of the launch condition and not the technique it'self._
+    > _Note: Vectorization itself does not reduce parallelism, rather without grid stride we must launch a quarter of the threads compared to the naive. This means the reduction in parallelism is because of the launch condition and not the technique itself._
     
       <br><br>
 
@@ -501,7 +501,7 @@ While float8 is not supported in CUDA, so our earlier float8 analysis is just th
    - Why this happened:
      - This is directly related to occupancy, where a higher occupancy often means each scheduler within the SM has access to more warps.
 
-<h3>Why It's Still Slower</h3>
+<h3>Why Its Still Slower</h3>
 
 1. Increased Warp Cycles Per Instruction (+519.14): 180.16 -> 1115.44 cycles
    - Why this happened:
@@ -554,9 +554,9 @@ While float8 is not supported in CUDA, so our earlier float8 analysis is just th
     
      - The reason why the two statistics I chose stood out to me and why I think they're a positive is the following
        - A decrease in IPC by -16.89%
-         - Now usually a decrease in IPC indicates that we are executing less instructions per cycle meaning we are doing less work per cycle. The thing that was interesting to me though was compared to every other variant of vector add which often lost 50-60% of IPC, the ILP kernel only lost 16.89%. This tells me while the other kernels suffered a loss in IPC because of the technique it'self (e.g. grid stride or vectorized), ILP may be suffering not from the technique it'self but because we are launching only a fourth of the number of blocks as the naive. This is important because the more blocks we have the more parallelism we can achieve, at least until of course we get diminishing returns and the overhead of adding blocks becomes significant.
+         - Now usually a decrease in IPC indicates that we are executing less instructions per cycle meaning we are doing less work per cycle. The thing that was interesting to me though was compared to every other variant of vector add which often lost 50-60% of IPC, the ILP kernel only lost 16.89%. This tells me while the other kernels suffered a loss in IPC because of the technique itself (e.g. grid stride or vectorized), ILP may be suffering not from the technique itself but because we are launching only a fourth of the number of blocks as the naive. This is important because the more blocks we have the more parallelism we can achieve, at least until of course we get diminishing returns and the overhead of adding blocks becomes significant.
        - A increase in Eligible Warps per Scheduler by +0.17%
-         - Now this is the statistic that makes me think my theory might be true. Every other kernel variant had more occupancy than the naive, but suffered significantly when it came to the number of eligible warps it had, but ILP is the opposite. This makes me think again the limiting factor for this kernel is not the technique it'self, but rather the schedulers limited number of blocks to switch to compared to the naive. <br>
+         - Now this is the statistic that makes me think my theory might be true. Every other kernel variant had more occupancy than the naive, but suffered significantly when it came to the number of eligible warps it had, but ILP is the opposite. This makes me think again the limiting factor for this kernel is not the technique itself, but rather the schedulers limited number of blocks to switch to compared to the naive. <br>
        - This makes me think that if ILP were to have the same number of blocks as the naive, it may perform better than naive as both will have the same level of warp parallelism.
 
 
@@ -594,7 +594,7 @@ Now this was one of the most enjoyable parts of this project. While at first thi
 From this project I learned:
 - When the write we commit to the L2 cache does not modify the entire 32 byte sector, the L2 cache must read the DRAM sector first before writing to the DRAM. I find this implicit read, and the process I took or the process of discovering it genuinely enjoyable and exciting. The idea of having this niche detail in my mental model excites me for the future when I will be able to use it. I can already imagine during say sparse writes, knowing this is the difference between performing a single write instruction, or a read followed by a write.
   
-- Another thing I enjoyed learning about was the intentionality of the hardware. In past projects where I've built things like full stack applications to ML models, there has always been a layer of abstraction that has prevented me from digging deep in to finding out why something worked the specific way that it did. When it comes to CUDA and low level systems work, quite literally everything has a reason. Whether that be why the cache line is 128 bytes, and how it perfectly fit's 4 sectors of the DRAM, or the reason why float4 is so spectacular is because it's the perfect tipping point where we can maximize the 128 bit register file using a single LDG.128 instruction, it all has a reason.
+- Another thing I enjoyed learning about was the intentionality of the hardware. In past projects where I've built things like full stack applications to ML models, there has always been a layer of abstraction that has prevented me from digging deep in to finding out why something worked the specific way that it did. When it comes to CUDA and low level systems work, quite literally everything has a reason. Whether that be why the cache line is 128 bytes, and how it perfectly fits 4 sectors of the DRAM, or the reason why float4 is so spectacular is because it's the perfect tipping point where we can maximize the 128 bit register file using a single LDG.128 instruction, it all has a reason.
 
   The L2 cache investigation took me two days, and then a few days later I had realized I was wrong and I had to spend another day understanding why. While this might seem mundane at first, being able to connect how the software beautifully uses the hardware to maximize throughput has genuinely, without a single doubt, been the best computer science experience as an undergraduate student. While I have not taken a parallel programming class, so I am unsure about the exact depth of which these many layers interact, and how we can use them to our advantage, I have no doubt that learning and updating my mental model will genuinely be enjoyable.
 
@@ -605,7 +605,7 @@ From this project I learned:
 
 If I were to restart this vector add project from scratch with the knowledge I have now (and any project from now on) this would be my process:
 
-**1. I would dissect the vector add equation it'self before I even think to write a single piece of code. This gives me the theoretical FLOPs/byte. This is important because before we even start, we should understand what our expected bottlenecks will be.**
+**1. I would dissect the vector add equation itself before I even think to write a single piece of code. This gives me the theoretical FLOPs/byte. This is important because before we even start, we should understand what our expected bottlenecks will be.**
 
 $$ \text{Arithmetic Intensity} (AI) = \frac{\text{Total Operations (FLOPs)}}{\text{Total Bytes Transferred (Memory Traffic)}} $$
 
@@ -623,7 +623,7 @@ $$ \text{Arithmetic Intensity} (AI) = \frac{\text{Total Operations (FLOPs)}}{\te
 **2. Once the equation is analyzed, I would do the following which I recently learned about. This process is a lot more complicated (which makes it a lot more interesting), but offers a significant theoretical view into our kernel.**
 
 <h3>A. DRAM Bandwidth Bound </h3>
-How long would the kernel take if the DRAM delivered bytes at it's theoretical maximum speed (seconds)?<br><br>
+How long would the kernel take if the DRAM delivered bytes at its theoretical maximum speed (seconds)?<br><br>
 
 
 $$ T_{DRAM} = \frac{\text{Total Bytes Transferred}}{\text{Peak DRAM Bandwidth}} $$
@@ -643,7 +643,7 @@ Needed information to calculate:
 
 
 <h3>B. Compute Bound </h3>
-How long would the kernel take if every core computed at it's theoretical maximum (seconds)?<br><br>
+How long would the kernel take if every core computed at its theoretical maximum (seconds)?<br><br>
 
 
 $$ T_{Compute} = \frac{\text{Total FLOPs}}{\text{Peak FLOPS}} $$
@@ -691,7 +691,7 @@ $$ T_{L2} = \frac{\text{Total Bytes through L2}}{\text{L2 Bandwidth}} $$
 
 
 Needed information to calculate:
-- **Kernel:** Total bytes passing through L2, can differ from DRAM due to write-validate reads or cache hit's
+- **Kernel:** Total bytes passing through L2, can differ from DRAM due to write-validate reads or cache hits
 - **Hardware:** L2 bandwidth
 
 
@@ -729,7 +729,7 @@ $$ \text{LSU Issue Rate} = \text{LSUs per SM} \times \text{Num SMs} \times \text
 
 Needed information to calculate:
 - **Kernel:** N, Memory operations per element (loads + stores)
-- **Hardware:** Load Store Unit's per SM, Number of SMs, Clock speed, Warp size
+- **Hardware:** Load Store Units per SM, Number of SMs, Clock speed, Warp size
 
 <br><br><br>
 
@@ -829,88 +829,88 @@ With this dissected view of our bottleneck, we can actually infer what we can do
 - Decreasing the elements
   - For vector add, we need every value we have to properly make sure all data is summed correctly, so this is not optimal.
 - Increase the DRAM Bandwidth
-  - To increase the DRAM Bandwidth, we would have to change the hardware, which can be helpful, but there are more cost efficient approaches by optimizing the software it'self.
+  - To increase the DRAM Bandwidth, we would have to change the hardware, which can be helpful, but there are more cost efficient approaches by optimizing the software itself.
 - Decrease the size of the elements
   - Now this is something we can theoretically do! Rather than needing the full precision of the float type, we can trade precision for a smaller byte value! After looking into it, this what float types are offered.<br><br>
   
   - Standard
     - FP32 (Single precision)
-      - Size: 32 bit's
-      - Precision: ~7 decimal digit's
+      - Size: 32 bits
+      - Precision: ~7 decimal digits
       - Range: 10^-38 to 10^38
       - Example: 3.1415926 <br><br>
     - FP16 (Half precision)
-      - Size: 16 bit's
-      - precision: ~3 decimal digit's
+      - Size: 16 bits
+      - precision: ~3 decimal digits
       - Range: 5.96e-8 to 65,504
       - Example: 3.141<br><br>
   - Ampere and later
     - BF16 (Brain Float)
-      - Size: 16 bit's
-      - precision: ~2 decimal digit's
+      - Size: 16 bits
+      - precision: ~2 decimal digits
       - Range: 10^-38 to 10^38
       - Example: 3.14<br><br>
   - Hopper and later
-    - FP8 (4 Exponent Bit's, 3 Mantissa Bit's)
-      - Size: 8 bit's
+    - FP8 (4 Exponent Bits, 3 Mantissa Bits)
+      - Size: 8 bits
       - precision: ~1 decimal digit
       - Range: -448 to 448
       - Example: 3.1<br><br>
-    - FP8 (5 Exponent  Bit's, 2 Mantissa Bit's)
-      - Size: 8 bit's
+    - FP8 (5 Exponent  Bits, 2 Mantissa Bits)
+      - Size: 8 bits
       - precision: Whole numbers
       - Range: -57,344 to 57,344
       - Example: 12,288<br><br>
   - Blackwell
     - FP6 (3 Exponent, 2 Mantissa)
-      - Size: 6 bit's
+      - Size: 6 bits
       - precision: Whole numbers
       - Range: -28 to 28
       - Example: 52<br><br>
-    - FP4 (2 Exponent Bit's and 1 Mantissa Bit)
-      - Size: 4 bit's
+    - FP4 (2 Exponent Bits and 1 Mantissa Bit)
+      - Size: 4 bits
       - precision: 16 values only
       - Range: 0, 0.5, 1, 1.5, 2, 3, 4, 6 and their negative counterparts.
       - Example: -0.5<br><br>
 
-> **A lesson into Exponent and Mantissa Bit's**
+> **A lesson into Exponent and Mantissa Bits**
 >
-> While researching the different float types, I will be honest, I did not know what exponent or Mantissa bit's were. After looking into it, this is my current understanding of them, and I hope those who are also new to the different float types, that this provides a helpful way to understand them.
+> While researching the different float types, I will be honest, I did not know what exponent or Mantissa bits were. After looking into it, this is my current understanding of them, and I hope those who are also new to the different float types, that this provides a helpful way to understand them.
 >
-> Mantissa Bit's are the bit's that actually say how many digit's do we hold? Mantissa bit's determine whether our value type can hold say the value "1231923" or just the value "123"
+> Mantissa Bits are the bits that actually say how many digits do we hold? Mantissa bits determine whether our value type can hold say the value "1231923" or just the value "123"
 > 
-> Exponent Bit's are the bit's that actually say now where does the decimal point go? Say we have a negative exponent bit, we can turn the "1231923" value to "123.1923" or to "0.00001231923"
+> Exponent Bits are the bits that actually say now where does the decimal point go? Say we have a negative exponent bit, we can turn the "1231923" value to "123.1923" or to "0.00001231923"
 >
 > One question I had was, how are the extra 0.0000 values stored? Wouldnt that result in needing more memory? This is where the beauty of the exponent bit comes in. Say we have the the original number 0.00001231923, the way the computer actually stores the value is this following
 > - Mantissa value: 1231923
 > - Exponent Value: -11
-> Using these values, when the computer wants the same number again, it can use the mantissa value of 1231923, then multiply it by 10^-11, and now we're back to our original number of 0.00001231923 without needing additional bit's to store the leading zeros!
+> Using these values, when the computer wants the same number again, it can use the mantissa value of 1231923, then multiply it by 10^-11, and now we're back to our original number of 0.00001231923 without needing additional bits to store the leading zeros!
 > 
 > _Note: In reality, the mantissa would store the value as 1.231923 which would result in our exponent value being -5, but for the sake of learning, we will treat it as an integer._
 >
 >
 > While this is an amazing system to store values, there is a drawback that we should be aware of.
 >
-> Say we can hold a single digit using our mantissa bit where we can hold 1, 2, 3, 4, 5, 6, 7, 8 and 9. Now lets say we apply our exponent bit, this lets us represent those single digit's values into say double digit values such as 10, 20, 30, 40, 50, 60, 70, 80 and 90. As we can see, we are unable to express the values inbetween our numbers. Say we had a value of 76, the computer would have to round to the nearest value we can express which would be 80.
+> Say we can hold a single digit using our mantissa bit where we can hold 1, 2, 3, 4, 5, 6, 7, 8 and 9. Now lets say we apply our exponent bit, this lets us represent those single digits values into say double digit values such as 10, 20, 30, 40, 50, 60, 70, 80 and 90. As we can see, we are unable to express the values inbetween our numbers. Say we had a value of 76, the computer would have to round to the nearest value we can express which would be 80.
 > 
 > Now what if our exponent bit allows us to express the hundreds place? Now our values can represent 100, 200, 300, 400, 500, 600, 700, 800 and 900. This means the values we are unable to express are even larger, and say we have a value of 151, the computer must round to the nearest digit which is 200. This means the greater our values from zero, the larger these jumps between numbers become. Now in a field like machine learning where in a neural network during back propagation where absolute precision matters, we can imagine why this may be a problem.
 >
 >
 >
-> Now to solve this we can either trade a exponent bit for a mantissa bit. This would allow us to have two digit's allowing for more granularity, but we lose some of our range. If we continue our last example, this would mean we can express numbers like 76 or 15, but we lose our ability to represent the hundreds place.
+> Now to solve this we can either trade a exponent bit for a mantissa bit. This would allow us to have two digits allowing for more granularity, but we lose some of our range. If we continue our last example, this would mean we can express numbers like 76 or 15, but we lose our ability to represent the hundreds place.
 >
-> Another way to solve this is to increase the size of the type of value it'self so rather trading a mantissa bit for an exponent, we can increase the total number of bit's.
+> Another way to solve this is to increase the size of the type of value itself so rather trading a mantissa bit for an exponent, we can increase the total number of bits.
 >
 > _Note: We assumed a base 10 for our exponent values, but in reality the computer uses a base of 2._
 
-On my current RTX 4060 (Ada Lovelace), FP32, FP16/BF16 and FP8 are supported. To test whether changing our element size from 32 bit's to 8 bit's increasing the DRAM Memory throughput, we can compare FP32 vs FP8 for vector add. After comparing the FP32 and FP8 versions, the FP8 consistently outperforms the FP32! 
+On my current RTX 4060 (Ada Lovelace), FP32, FP16/BF16 and FP8 are supported. To test whether changing our element size from 32 bits to 8 bits increasing the DRAM Memory throughput, we can compare FP32 vs FP8 for vector add. After comparing the FP32 and FP8 versions, the FP8 consistently outperforms the FP32! 
 
 - The FP8:
   - Increases memory throughput by ~2%
   - Increases compute throughput by ~30%
   - Decreases duration by 30%
 
-This is very interesting, because the idea of reducing the byte size was not from profiling the kernel, but rather first calculating the theoretical bottleneck from our equations, and then specifically targeting what can be done to reduce the bottleneck! The reason that the equations derived are so exciting is because it's a framework that can be applied to any future kernel! 
+This is very interesting, because the idea of reducing the byte size was not from profiling the kernel, but rather first calculating the theoretical bottleneck from our equations, and then specifically targeting what can be done to reduce the bottleneck! The reason that the equations derived are so exciting is because its a framework that can be applied to any future kernel! 
 
 <h1>Conclusion</h1>
 This project first started as a way for me to learn the memory hierarchy, how to open and read Nsight Compute, and how various optimization techniques such as grid stride, vectorization and ILP would help vector add. I expected it to take maximum a week to finish.
@@ -919,5 +919,5 @@ After learning that none of the optimization techniques I used help, this projec
 
 I am also eternally grateful for this project because I feel as though I've finally found a niche I can imagine a career in. What was supposed to be a 5 page simple Github project on how vector add works, turned into what I'm now looking back at is a 40 page document. I did not mean to spend a month on this project, nor to make it 40 pages, but the genuine excitement of being able to dig deep into why something behaves the way it does made it impossible to stop. From the week long 31% L2 cache investigation to the "holy macaroni" moment I had where right before I went to bed I finally connected the dots and I just had to write something down to make sure I didn't forget, the entire process has been the most fun. I've had with computer science. I am excited for my next kernel, and that feeling of confusion to investigating to understanding and updating my mental model is something I am wanting to and excited to chase.
 
-While I'm sure this document could have been polished towards something more concrete like an official report where only the right answers are displayed, I feel it's important to demonstrate that not all theories are correct, and it's the thought process involved, experimentation and updating of the mental model that matters the most. I feel this especially true as a beginner where often our mental models lack, and it's perfectly okay to be wrong, and it should be encouraged. To any fellow beginners, or future beginners, I hope this document provides both insight into how CUDA works, and the comfort of knowing it's okay to be wrong!
+While I'm sure this document could have been polished towards something more concrete like an official report where only the right answers are displayed, I feel it's important to demonstrate that not all theories are correct, and its the thought process involved, experimentation and updating of the mental model that matters the most. I feel this especially true as a beginner where often our mental models lack, and its perfectly okay to be wrong, and it should be encouraged.
 
