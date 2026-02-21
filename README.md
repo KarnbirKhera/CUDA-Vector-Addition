@@ -46,7 +46,7 @@ Tradeoff of each Technique:
 - Instruction Level Parallelism: Increased register pressure, increases coalescing complexity.
 
 **_Register pressure note:_**<br>
-_Increased register pressure can lead to lower occupancy, if register count per thread exceeds hardware maximum, register spills into slower L2 cache. In this case, an RTX 4060 has a maximum register per thread count of 255._
+_Increased register pressure can lead to lower occupancy, if register count per thread exceeds hardware maximum, register spilling occurs into slower L2 cache. In this case, an RTX 4060 has a maximum register per thread count of 255._
 
 <h1>Benchmark Methodology</h1>
 - Time elapsed measured using CUDA Events. This allowed accurate profiling of kernel runtime without launch overhead or other miscellaneous factors such SM clock frequency. <br>
@@ -340,7 +340,7 @@ Circling back to the origin of this investigation which was why vector add had a
 
 >Note in the section before, I isolate the vector add kernel into their read and write variants isolated. After looking back now with the experience I have reading Nsight Compute, I can see that even the original vector add kernel was hinting that the write hit rate was a 100% using the lts__t_sector_op_write_hit_rate.pct metric, meaning we did not need to isolate those variants. None the less, the process itself was very fun even if it might have been not been needed.
 
-The reason why I believe the hit rate of write is always a 100% is because no matter what case we hit, whether that be coalesced or uncoalesced access, the L2 will always allocate a sector locally on a write. This means once the kernel sends the write request and it reaches the L2 cache, the write always has a way to reach the required DRAM sector. <br><br><br>
+The reason why I believe the hit rate of writes is always a 100% is because no matter what case we hit, whether that be coalesced or uncoalesced access, the L2 will always allocate a sector locally on a write. This means once the kernel sends the write request and it reaches the L2 cache, the write always has a way to reach the required DRAM sector. <br><br><br>
 
 
 > I did end up making a LinkedIn post on this, where I drew up the following image to demonstrate what the partial write process looks like under the write-validate policy. I hope this helps those whom are visual learners!
