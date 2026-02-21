@@ -2,7 +2,7 @@
 
 <h1>Introduction</h1>
 This project is the first step in my CUDA learning journey from scratch, starting with vector addition and then progressively adding common GPU optimization techniques.
-Along the way I learned that "optimizations" don't always make things faster, and its important to use tools like NVIDIA Nsight to understand why and when to apply
+Along the way I learned that "optimizations" don't always make things faster, and it's important to use tools like NVIDIA Nsight to understand why and when to apply
 specific optimization techniques.
 
 <h1>Goals of the Project</h1>
@@ -17,7 +17,7 @@ specific optimization techniques.
 GPU (RTX 4060):<br>
 - 24 SMs<br>
 - 6 max residential blocks per SM<br>
-- 1,536 max residential thread per SM<br>
+- 1,536 max residential threads per SM<br>
 - 65,536 max registers per SM <br>
 - 36,864 max threads for GPU <br>
 - 1,572,864 max registers for GPU<br>
@@ -338,7 +338,7 @@ While I've learned that the explicit cost of uncoalesced access is essentially w
 
 Circling back to the origin of this investigation which was why vector add had a ~31% hit rate despite being a fully streaming kernel, I have the following claim. Vector add performs two reads, A and B, and performs a single write C. We've already confirmed using our read only kernel that each A and B read has a hit rate of ~0.07%, which leaves us to understand why the hit rate of our single write is always 100%. 
 
->Note in the section before, I isolate the vector add kernel into their read and write variants isolated. After looking back now with the experience I have reading Nsight Compute, I can see that even the orginial vector add kernel was hinting that the write hit rate was a 100% using the lts__t_sector_op_write_hit_rate.pct metric, meaning we did not need to isolate those variants. None the less, the process itself was very fun even if it might have been not been needed.
+>Note in the section before, I isolate the vector add kernel into their read and write variants isolated. After looking back now with the experience I have reading Nsight Compute, I can see that even the original vector add kernel was hinting that the write hit rate was a 100% using the lts__t_sector_op_write_hit_rate.pct metric, meaning we did not need to isolate those variants. None the less, the process itself was very fun even if it might have been not been needed.
 
 The reason why I believe the hit rate of write is always a 100% is because no matter what case we hit, whether that be coalesced or uncoalesced access, the L2 will always allocate a sector locally on a write. This means once the kernel sends the write request and it reaches the L2 cache, the write always has a way to reach the required DRAM sector. <br><br><br>
 
@@ -459,7 +459,7 @@ While float8 is not supported in CUDA, so our earlier float8 analysis is just th
 <h3>Why it's slower</h3>
 
 **1. significant Decrease in Eligible Warps Per Scheduler [warp] (-56.40%): 0.06 -> 0.03**
-  - Why this happend:
+  - Why this happened:
     - To use Vectorization within this context where we do not use grid stride, we must launch n/4 threads. This means although the techinique itself does not reduce parallelism, to ensure we compute all the given elements and nothing less and nothing more, we must launch less warps compared to the naive which means less warps to switch to for the SM when one stalls.<br><br>
       
     > _Note: Vectorization itself does not reduce parallelism, rather without grid stride we must launch a quarter of the threads compared to the naive. This means the reduction in parallelism is because of the launch condition and not the technique itself._
@@ -518,7 +518,7 @@ While float8 is not supported in CUDA, so our earlier float8 analysis is just th
 2. Reduction in Eligible Warps (-76.20%): 0.06 -> 0.02 warps
    - Why this happened:
      - Grid Stride: The use of grid stride effectively reduced the number of blocks from the naive's 781,250 to 144. While this 144 count allowed for better occupancy, this does not give the SM enough warps to switch to when one warp stalls for latency hiding. Latency hiding is important especially for memory bound kernels as it allows the scheduler to switch to different warps when the current one is stalled, this allows each SM to always be busy rather than stalling waiting on memory.
-     - Vectorization: The reason why Vectorization plays a role in reducing the elgible warps is because of the required tail handling for when the data is not divisible by 4. This tail handling makes each warp to stall for longer, which means the scheduler will have even less warps to switch to as every warp will stall for a longer duration.
+     - Vectorization: The reason why Vectorization plays a role in reducing the eligible warps is because of the required tail handling for when the data is not divisible by 4. This tail handling makes each warp to stall for longer, which means the scheduler will have even less warps to switch to as every warp will stall for a longer duration.
      >Note: Vectorization allows for 4 floats per single memory instruction. This will result in fewer warps in flight meaning a decrease in the number of eligible warps the scheduler is able to switch to.
 
 
@@ -598,7 +598,7 @@ From this project I learned:
 
   The L2 cache investigation took me two days, and then a few days later I had realized I was wrong and I had to spend another day understanding why. While this might seem mundane at first, being able to connect how the software beautifully uses the hardware to maximize throughput has genuinely, without a single doubt, been the best computer science experience as an undergraduate student. While I have not taken a parallel programming class, so I am unsure about the exact depth of which these many layers interact, and how we can use them to our advantage, I have no doubt that learning and updating my mental model will genuinely be enjoyable.
 
-  The funny thing is the night before I figured this out, I remember thinking all of the possiblities of why the L2 cache policy was the way it was, and I remember finding the arXiv article and all the dots suddenly connecting. This quite literally made me so ecstatic that I made sure to write "holy macaroni" in this github readme so I wouldn't forget that hey! lets test this theory in the morning, it actually might be the reason why your seeing the numbers your seeing! 
+  The funny thing is the night before I figured this out, I remember thinking all of the possibilities of why the L2 cache policy was the way it was, and I remember finding the arXiv article and all the dots suddenly connecting. This quite literally made me so ecstatic that I made sure to write "holy macaroni" in this github readme so I wouldn't forget that hey! lets test this theory in the morning, it actually might be the reason why you're seeing the numbers you're seeing! 
 
 
 <h1>What I Would Do Differently</h1>
@@ -884,12 +884,12 @@ With this dissected view of our bottleneck, we can actually infer what we can do
 > One question I had was, how are the extra 0.0000 values stored? Wouldnt that result in needing more memory? This is where the beauty of the exponent bit comes in. Say we have the the orginal number 0.00001231923, the way the computer actually stores the value is this following
 > - Mantissa value: 1231923
 > - Exponent Value: -11
-> Using these values, when the computer wants the same number again, it can use the Mantissa value of 1231923, then multiply it by 10^-11, and now we're back to our orginial number of 0.00001231923 without needing additional bits to store the leading zeros!
+> Using these values, when the computer wants the same number again, it can use the Mantissa value of 1231923, then multiply it by 10^-11, and now we're back to our original number of 0.00001231923 without needing additional bits to store the leading zeros!
 > 
 > _Note: In reality, the Mantissa would store the value as 1.231923 which would result in our exponent value being -5, but for the sake of learning, we will treat it as an integer._
 >
 >
-> While this is an amazing system to store values, there is a draw back that we should be aware of.
+> While this is an amazing system to store values, there is a drawback that we should be aware of.
 >
 > Say we can hold a single digit using our Mantissa bit where we can hold 1, 2, 3, 4, 5, 6, 7, 8 and 9. Now lets say we apply our exponent bit, this lets us represent those single digits values into say double digit values such as 10, 20, 30, 40, 50, 60, 70, 80 and 90. As we can see, we are unable to express the values inbetween our numbers. Say we had a value of 76, the computer would have to round to the nearest value we can express which would be 80.
 > 
@@ -917,7 +917,7 @@ This project first started as way for me to learn the memory hierarchy, how to o
 
 After learning that none of the optimization techniques I used help, this project transitioned from learning just how to code in a parallel programming manner, but rather a deep dive into why GPUs behave the way they do. Looking back, I am eternally grateful that none of the optimization techniques helped because I feel the depth of what I've learned from this project will genuinely be useful for the upcoming kernels I learn.
 
-I am also eternally grateful for this project because I feel as though I've finally found the niche I can imagine a career in. What was suppose to be a 5 page simple Github project on how vector add works, turned into what I'm now looking back at is a 40 page document. I did not mean to spend a month on this project, nor to make it 40 pages, but the genuine excitement of being able to dig deep into why something behaves the way it does made it impossible to stop. From the week long 31% L2 cache investigation to the "holy macaroni" moment I had where right before I went to bed I finally connected the dots and I just had to write something down to make sure I didn't forget, the entire process been the most fun I've had with computer science. I am excited for my next kernel, and that feeling of confusion to investigating to understanding and updating my mental model is something I am wanting to and excited to chase.
+I am also eternally grateful for this project because I feel as though I've finally found the niche I can imagine a career in. What was supposed to be a 5 page simple Github project on how vector add works, turned into what I'm now looking back at is a 40 page document. I did not mean to spend a month on this project, nor to make it 40 pages, but the genuine excitement of being able to dig deep into why something behaves the way it does made it impossible to stop. From the week long 31% L2 cache investigation to the "holy macaroni" moment I had where right before I went to bed I finally connected the dots and I just had to write something down to make sure I didn't forget, the entire process been the most fun I've had with computer science. I am excited for my next kernel, and that feeling of confusion to investigating to understanding and updating my mental model is something I am wanting to and excited to chase.
 
-While I'm sure this document could have been polished towards something more concrete like an official report where only the right answers are displayed, I feel its important to demonstrate that not all theories are correct, and its the thought process involved, experimentation and updating of the mental model that matters the most. I feel this especially true as a beginner where often our mental models lack, and it's perfectly okay to be wrong, and it should be encouraged. To any fellow beginners, or future beginners, I hope this document provides both insight into how CUDA works, and the comfort of knowing its okay to be wrong!
+While I'm sure this document could have been polished towards something more concrete like an official report where only the right answers are displayed, I feel it's important to demonstrate that not all theories are correct, and its the thought process involved, experimentation and updating of the mental model that matters the most. I feel this especially true as a beginner where often our mental models lack, and it's perfectly okay to be wrong, and it should be encouraged. To any fellow beginners, or future beginners, I hope this document provides both insight into how CUDA works, and the comfort of knowing its okay to be wrong!
 
