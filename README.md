@@ -278,10 +278,9 @@ To confirm this theory using my own data, I did the following experiment with tw
 The Coalesced Write Only kernel was given 10 million threads to write across 10 million elements, and the Uncoalesced Write Only kernel was given 10 million threads to write across 80 million elements to make up for the stride value of 8. If the theory by the paper holds true, we should see the following results:
 
 - For the Coalesced Write Only kernel, the ratio between number of written sectors verus those read should be near zero. This is because all of our writes are coalesced, and for every sector we modify, we always modify all 32 bytes with that sector. This means for every write, we should not have a following read.
-- For the Uncoalesced Write Only kernel, the ratio between the numbers of written sectors versus those read should be near 1:1. This is because for any given sector, we only modify 4 out of the 32 bytes, this means the L2 cache will need to read the DRAM sector to fully complete its write mask before evicting the dirty cache line.
+- For the Uncoalesced Write Only kernel, the ratio between the numbers of written sectors versus those read should be near 1:1. This is because for any given sector, we only modify 4 out of the 32 bytes, this means the L2 cache will need to read the DRAM sector to fully complete its write mask before evicting the dirty cache line.<br><br>
 
 <h3>Results</h3>
-  
 Coalesced Write Only:
 - Device Memory:
   - Load (Sectors): 37,508
@@ -296,11 +295,16 @@ Uncoalesced Write Only:
 - **Calculated Load/Store Ratio:**
   - **1.09 loads : 1 store**
 
+<br>
+
 Coalesced Write Only Results:
   - From the coalesced access results we can deduce the following. When writes are perfectly coalesced, the L2 cache has no reason to perform a read of the DRAM as the modified cache line already has a fully 32 byte valid write mask. Thus, the cache line can be properly evicted to the DRAM. This is supported by the low ratio of loads to stores, where one could conclude the 37,508 loads are likely an overhead of the kernel, and not related to the writes performed
 
-Uncoalesced WRite Only Results:
-  - From the uncoalesced access results, we can deduce the following. When writes are not coalesced, the L2 cache has to perform a read into the DRAM for every incomplete sector we do not fully modify. This is supported by the near 1:1 ratio of loads to writes.
+Uncoalesced Write Only Results:
+  - From the uncoalesced access results, we can deduce the following. When writes are not coalesced, the L2 cache has to perform a read into the DRAM for every incomplete sector we do not fully modify. This is supported by the near 1:1 ratio of loads to writes.<br><br>
+
+
+
 
 <h3>Summary of Experiment</h3>
 Based off the following results on the Ada Lovelace architecture (RTX 4060), one can theorize that the L2 cache uses a write-validate policy as follows:
@@ -319,10 +323,13 @@ The reason why I believe the hit rate of write is always a 100% is because no ma
 > I did end up making a LinkedIn post on this, where I drew up the following image to demonstrate what the partial write process looks like under the write-validate policy. I hope this helps those whom are visual learners!
 ><img width="1450" height="1246" alt="image" src="https://github.com/user-attachments/assets/310d10b2-f188-4042-9d17-acd40f34d481" />
 
+<br><br>
+
+> Note from future self:
+> The conducted the same micro-benchmark on the Blackwell architecture and found very similar results. This suggests the write-validate L2 cache policy is also present on the Blackwell architecture. The following <a href="https://www.linkedin.com/feed/update/urn:li:activity:7430642396683599872/?originTrackingId=89WlEwujXqhEoENNJ6Wp5w%3D%3D" target="_blank">LinkedIn</a> post goes into the micro-benchmark results in more depth.
 
 
-
-
+<br><br><br><br>
 <h2>Grid Stride vs Naive</h2>
 
 **Performance Result:** 3.07% slower than the Naive <br>
