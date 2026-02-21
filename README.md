@@ -16,8 +16,8 @@ specific optimization techniques.
 
 GPU (RTX 4060):<br>
 - 24 SMs<br>
-- 6 max residential blocks per SM<br>
-- 1,536 max residential threads per SM<br>
+- 6 max resident blocks per SM<br>
+- 1,536 max resident threads per SM<br>
 - 65,536 max registers per SM <br>
 - 36,864 max threads for GPU <br>
 - 1,572,864 max registers for GPU<br>
@@ -41,7 +41,7 @@ GPU (RTX 4060):<br>
 
 Tradeoff of each Technique:
 - Naive: Requires one thread per element, difficult to scale across various GPUs and large n size.
-- Grid-stride: Increased register pressure. Can provide un-necessary overhead if threads > n. In large datasets.
+- Grid-stride: Increased register pressure. Can provide unnecessary overhead if threads > n. In large datasets.
 - Vectorization (float4): Increased register pressure, requires 16 byte alignment, increases coalescing complexity, can require tail handling if n is not divisible by 4.
 - Instruction Level Parallelism: Increased register pressure, increases coalescing complexity.
 
@@ -167,7 +167,7 @@ After looking into why this might be the case, the following provides some insig
 <img width="463" height="495" alt="image" src="https://github.com/user-attachments/assets/33f3b2d1-8977-4b21-b5eb-369e0e3febc1" />
 <img width="1239" height="444" alt="image" src="https://github.com/user-attachments/assets/6b4278a0-255c-47f7-ae0d-2574383160c1" />
 <br>
-We can see from the Nsight Compute, the L2 cache hit rate is ~31%, which is supported by the detailed L2 report. This percentage is made up of of 54186884 reads (A[i] and B[i]) and 25001191 writes (C[i]).
+We can see from the Nsight Compute, the L2 cache hit rate is ~31%, which is supported by the detailed L2 report. This percentage is made up of 54186884 reads (A[i] and B[i]) and 25001191 writes (C[i]).
 
 <br><br>
 
@@ -287,10 +287,10 @@ To start off, I'll explain the first source from my prior section (https://forum
 
 Now our second source "Exploring Modern GPU Memory System Design Challenges through Accurate Modeling" (https://arxiv.org/abs/1810.07269) published on arXiv provides empirical evidence for a different write policy named "write-validate" based on the Volta architecture.
 
-- What write-validate does: When the L2 recieves a write, it doesn't fetch from DRAM. It instead writes the bytes directly into the sector (in the L2 cache) and sets the corresponding bits modified using a write mask, marking the written sector as valid and modified.
+- What write-validate does: When the L2 receives a write, it doesn't fetch from DRAM. It instead writes the bytes directly into the sector (in the L2 cache) and sets the corresponding bits modified using a write mask, marking the written sector as valid and modified.
 - What happens at eviction: If the mask is full (all 32 bytes of the sector are written), the sector is written back to the DRAM without reading the sector beforehand. If the mask is partial, meaning the modified bytes were less than 32, then the missing bytes must first be read from the DRAM, then used to produce a complete write mask before writing to the DRAM.
 
-- This brings up the question that upon receiving a write request, does the L2 cache immediately read the DRAM, or does it wait until after the cache line is modifed and evicted? The researchers used the following experiment to answer this question. They first modified a few bytes in a sector, and then immediately afterwards, read the same sector which resulted in a miss in the L2 cache. This experiment proves that the L2 cache does not commit a read to the DRAM upon receiving a write, because if it had, the L2 sector would have resulted in a hit by the researchers.
+- This brings up the question that upon receiving a write request, does the L2 cache immediately read the DRAM, or does it wait until after the cache line is modified and evicted? The researchers used the following experiment to answer this question. They first modified a few bytes in a sector, and then immediately afterwards, read the same sector which resulted in a miss in the L2 cache. This experiment proves that the L2 cache does not commit a read to the DRAM upon receiving a write, because if it had, the L2 sector would have resulted in a hit by the researchers.
 
 
 To confirm this theory using my own data, I did the following experiment with two write only kernels.
@@ -343,7 +343,7 @@ Circling back to the origin of this investigation which was why vector add had a
 The reason why I believe the hit rate of writes is always a 100% is because no matter what case we hit, whether that be coalesced or uncoalesced access, the L2 will always allocate a sector locally on a write. This means once the kernel sends the write request and it reaches the L2 cache, the write always has a way to reach the required DRAM sector. <br><br><br>
 
 
-> I did end up making a LinkedIn post on this, where I drew up the following image to demonstrate what the partial write process looks like under the write-validate policy. I hope this helps those whom are visual learners!
+> I did end up making a LinkedIn post on this, where I drew up the following image to demonstrate what the partial write process looks like under the write-validate policy. I hope this helps those who are visual learners!
 ><img width="1450" height="1246" alt="image" src="https://github.com/user-attachments/assets/310d10b2-f188-4042-9d17-acd40f34d481" />
 
 <br><br>
@@ -396,7 +396,7 @@ The reason why I believe the hit rate of writes is always a 100% is because no m
 1. **Significant Decrease in Executed Instructions (-59.37%): 200,000,000 -> 40,625,063**
 
   - Why this happened:
-    - This is the direct reason why when it comes to reducing instructions, why Vectorization is such a great tool. Rather than a single thread requesting a single float, we request for 4 floats at once using a single memory request. At first when I learned about Vectorization it seemed very inadvertent because while we request 4 floats with a single memory request, doesn't that mean we need to move 4x the amount of data therefore, likely take four times the amount of time? It turns out it actually takes nearly the exact amount of time, and the reason it does is actually very exciting and goes to the core of the GPU architecture.
+    - This is the direct reason why when it comes to reducing instructions, why Vectorization is such a great tool. Rather than a single thread requesting a single float, we request for 4 floats at once using a single memory request. At first when I learned about Vectorization it seemed very counter-intuitive because while we request 4 floats with a single memory request, doesn't that mean we need to move 4x the amount of data therefore, likely take four times the amount of time? It turns out it actually takes nearly the exact amount of time, and the reason it does is actually very exciting and goes to the core of the GPU architecture.
     
     - The reason why receiving 4 floats at once is very similar to the amount of time it takes to receive a single float. is because of the way the DRAM's architecture is setup. When we request a single 4 byte float, we are essentially eating the cost of reading the DRAM sector for just a 1/4th of the data it holds, although note in reality instructional commands are executed at the warp level so we would actually use all 32 bytes in said sector. When we use Vectorization, we still eat the same cost of reading the DRAM sector, but we are using 16 bytes out of the 32 bytes that sector holds so we are essentially getting more data per read, and again at a warp level we are actually using all of the data contained within this DRAM sector.
 
@@ -460,7 +460,7 @@ While float8 is not supported in CUDA, so our earlier float8 analysis is just th
 
 **1. Significant Decrease in Eligible Warps Per Scheduler [warp] (-56.40%): 0.06 -> 0.03**
   - Why this happened:
-    - To use Vectorization within this context where we do not use grid stride, we must launch n/4 threads. This means although the techinique itself does not reduce parallelism, to ensure we compute all the given elements and nothing less and nothing more, we must launch less warps compared to the naive which means less warps to switch to for the SM when one stalls.<br><br>
+    - To use Vectorization within this context where we do not use grid stride, we must launch n/4 threads. This means although the techinique itself does not reduce parallelism, to ensure we compute all the given elements and nothing less and nothing more, we must aunch fewer warps compared to the naive which means less warps to switch to for the SM when one stalls.<br><br>
       
     > _Note: Vectorization itself does not reduce parallelism, rather without grid stride we must launch a quarter of the threads compared to the naive. This means the reduction in parallelism is because of the launch condition and not the technique itself._
     
@@ -552,7 +552,7 @@ While float8 is not supported in CUDA, so our earlier float8 analysis is just th
        - Reduce computation dependency to either reduce long scoreboard stalls, or allow for more active occupancy by reducing register count if that is the limiting factor.
      - I believe what the ILP=4 kernel is doing is the first, but not using more warps, but rather using latency hiding at the instruction level. In hindsight, I suppose the name makes sense where schedulers can hide latency by switching to different warps, but ILP allows for latency hiding at the thread/instruction level.
     
-     - The reason why the two statistics I chose stood out to me and why I think their a positive is the following
+     - The reason why the two statistics I chose stood out to me and why I think they're a positive is the following
        - A decrease in IPC by -16.89%
          - Now usually a decrease in IPC indicates that we are executing less instructions per cycle meaning we are doing less work per cycle. The thing that was interesting to me though was compared to every other variant of vector add which often lost 50-60% of IPC, the ILP kernel only lost 16.89%. This tells me while the other kernels suffered a loss in IPC because of the technique itself (e.g. grid stride or vectorized), ILP may be suffering not from the technique itself but because we are launching only a fourth of the number of blocks as the naive. This is important because the more blocks we have the more parallelism we can achieve, at least until of course we get diminishing returns and the overhead of adding blocks becomes significant.
        - A increase in Eligible Warps per Scheduler by +0.17%
@@ -910,7 +910,7 @@ On my current RTX 4060 (Ada Lovelace), FP32, FP16/BF16 and FP8 are supported. To
   - Increases compute throughput by ~30%
   - Decreases duration by 30%
 
-This is very interesting, because the idea of reducing the byte size was not from profiling the kernel, but rather first calculating the theoretical bottleneck from our equations, and then specifically targetting what can be done to reduce the bottleneck! The reason that the equations derived are so exciting is because its a framework that can be applied to any future kernel! 
+This is very interesting, because the idea of reducing the byte size was not from profiling the kernel, but rather first calculating the theoretical bottleneck from our equations, and then specifically targeting what can be done to reduce the bottleneck! The reason that the equations derived are so exciting is because its a framework that can be applied to any future kernel! 
 
 <h1>Conclusion</h1>
 This project first started as way for me to learn the memory hierarchy, how to open and read Nsight Compute, and how various optimization techniques such as grid stride, vectorization and ILP would help vector add. I expected it to take maximum a week to finish.
