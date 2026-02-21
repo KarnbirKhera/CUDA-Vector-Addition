@@ -95,7 +95,7 @@ _Increased register pressure can lead to lower occupancy, if register count per 
 
 
 
-
+<br><br><br>
 <h1>A Deeper Dive into Vector Addition</h1>
 To better understand the performance of each of the optimization techniques, an analysis into the vector addition operation itself provides a great starting point.
 
@@ -126,14 +126,14 @@ While CUDA timing shows us the runtime of each kernel, Nsight Compute allows us 
 <h2>Naive NSight Analysis</h2>
 <h3>Memory Throughput</h3>
 <img width="876" height="178" alt="image" src="https://github.com/user-attachments/assets/4e3e5646-8ae2-41a0-8c1b-af8822f83e96" />
-
-
-<br><br><br>
-
+<br>
 
 The naive kernel achieves 93.93% DRAM throughput, showing that the naive kernel effectively saturates the DRAM bandwidth without any optimization techniques.
+
+<br><br>
+
 <h3>Roofline Placement</h3>
-<img width="1710" height="348" alt="image" src="https://github.com/user-attachments/assets/b48c384b-bc11-4cff-9d6e-c929c5647132" />
+<img width="1710" height="348" alt="image" src="https://github.com/user-attachments/assets/b48c384b-bc11-4cff-9d6e-c929c5647132" /><br>
 
 The naive kernel has an arithmetic intensity of 0.08 FLOPs/byte according to the roofline model, and sits on the memory roof to the left of the double precision ridge point, which confirms the kernel is memory bound. This matches our early calculation of 12 bytes moved per one floating point operation resulting in 0.08 FLOPs/byte.
 
