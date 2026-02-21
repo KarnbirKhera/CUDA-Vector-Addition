@@ -12,6 +12,17 @@ specific optimization techniques. This project was also very good for me to lear
 - Learning to read NVIDIA Nsight Compute to understand kernels at a deeper level<br>
 - Compare theoretical vs measured memory bandwidth<br>
 
+<h1>Hardware Used</h1>
+
+GPU (RTX 4060):<br>
+- 24 SMs<br>
+- 6 max residential blocks per SM<br>
+- 1,536 max residential thread per SM<br>
+- 65,536 max registers per SM <br>
+- 36,864 max threads for GPU <br>
+- 1,572,864 max registers for GPU<br>
+
+
 <h1>Kernels Implemented</h1>
 
 | Vector Sum Kernel                  | Techniques                             | Register Count   |
@@ -778,9 +789,12 @@ With this disected view of our bottleneck, we can actually infer what we can do!
 
 - Decreasing the elements
   - For vector add, we need every value we have to properly make sure all data is summed correctly, so this is not optimal.
+- Increase the DRAM Bandwidth
+  - To increase the DRAM Bandwidth, we would have to change the hardware, which can be helpful, but there are more cost efficient approaches by optimizing the software itself.
 - Decrease the size of the elements
   - Now this is something we can theoretically do! Rather than needing the full percision of the float type, we can trade percision for a smaller byte value! After looking into it, this what float types are offered.<br><br>
-  -Standard
+  
+  - Standard
     - FP32 (Single Percision)
       - Size: 32 bits
       - Percision: ~7 decimal digits
@@ -791,13 +805,13 @@ With this disected view of our bottleneck, we can actually infer what we can do!
       - Percision: ~3 decimal digits
       - Range: 5.96e-8 to 65,504
       - Example: 3.141<br><br>
-  - Amphere
+  - Amphere and later
     - BF16 (Brain Float)
       - Size: 16 bits
       - Percision: ~2 decimal digits
       - Range: 10^-38 to 10^38
       - Example: 3.14<br><br>
-  - Hopper
+  - Hopper and later
     - FP8 (4 Exponent Bits, 3 Mantissa Bits)
       - Size: 8 bits
       - Percision: ~1 decimal digit
@@ -857,14 +871,4 @@ On my current RTX 4060 (Ada Lovelace), FP32, FP16/BF16 and FP8 are supported. To
   - Increases compute throughput by ~30%
   - Decreases duration by 30%
 
- 
-
-
-<h3>Hardware</h3>
-On current GPU (RTX 4060):<br>
-- 24 SMs<br>
-- 6 max residential blocks per SM<br>
-- 1,536 max residential thread per SM<br>
-- 65,536 max registers per SM <br>
-- 36,864 max threads for GPU <br>
-- 1,572,864 max registers for GPU<br>
+This is very interesting, because the idea of reducing the byte size was not from profiling the kernel, but rather first calculating the theoretical bottleneck from our equations, and then specifically targetting what can be done to reduce the bottleneck!
