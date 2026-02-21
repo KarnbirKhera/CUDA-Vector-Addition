@@ -780,6 +780,7 @@ With this disected view of our bottleneck, we can actually infer what we can do!
   - For vector add, we need every value we have to properly make sure all data is summed correctly, so this is not optimal.
 - Decrease the size of the elements
   - Now this is something we can theoretically do! Rather than needing the full percision of the float type, we can trade percision for a smaller byte value! After looking into it, this what float types are offered.<br><br>
+  -Standard
     - FP32 (Single Percision)
       - Size: 32 bits
       - Percision: ~7 decimal digits
@@ -790,11 +791,13 @@ With this disected view of our bottleneck, we can actually infer what we can do!
       - Percision: ~3 decimal digits
       - Range: 5.96e-8 to 65,504
       - Example: 3.141<br><br>
+  - Amphere
     - BF16 (Brain Float)
       - Size: 16 bits
       - Percision: ~2 decimal digits
       - Range: 10^-38 to 10^38
       - Example: 3.14<br><br>
+  - Hopper
     - FP8 (4 Exponent Bits, 3 Mantissa Bits)
       - Size: 8 bits
       - Percision: ~1 decimal digit
@@ -805,6 +808,7 @@ With this disected view of our bottleneck, we can actually infer what we can do!
       - Percision: Whole numbers
       - Range: -57,344 to 57,344
       - Example: 12,288<br><br>
+  - Blackwell
     - FP6 (3 Exponent, 2 Mantissa)
       - Size: 6 bits
       - Percision: Whole numbers
@@ -846,6 +850,14 @@ With this disected view of our bottleneck, we can actually infer what we can do!
 >
 > _Note: We assumed a base 10 for our exponent values, but in reality the computer uses a base of 2._
 
+On my current RTX 4060 (Ada Lovelace), FP32, FP16/BF16 and FP8 are supported. To test whether changing our element size from 32 bits to 8 bits increasing the DRAM Memory throughput, we can compare FP32 vs FP8 for vector add. After comparing the FP32 and FP8 versions, the FP8 consistently outperforms the FP32! 
+
+- The FP8:
+  - Increases memory throughput by ~2%
+  - Increases compute throughput by ~30%
+  - Decreases duration by 30%
+
+ 
 
 
 <h3>Hardware</h3>
