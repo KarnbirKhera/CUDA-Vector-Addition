@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cuda_runtime.h>
+#include <cuda_fp8.h>
 /**
  * Naive Vector Sum Kernel:
  * --------------------------------------------------
@@ -11,7 +12,7 @@
  *                          to calculate sum of all elements.
  */
 __global__ void vectorSum(float* A, float* B, float* C, int n) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x; //Local Thread ID
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
     if(i < n) {
         C[i] = A[i] + B[i];
     }
@@ -177,6 +178,7 @@ __global__ void ILP2VectorizedGridVectorSum(float* A, float* B, float* C, int n)
     }
 }
 
+
 __global__ void ILP4VectorizedGridVectorSum(float* A, float* B, float* C, int n) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int stride = gridDim.x * blockDim.x;
@@ -233,4 +235,256 @@ __global__ void ILP4VectorizedGridVectorSum(float* A, float* B, float* C, int n)
 
 
 
+/*
 
+*
+*
+*               EXPERIMENT KERNELS BELOW
+*
+*
+*
+*/
+
+
+
+/*
+            TESTING
+*/
+
+__global__ void vectorSumWriteOnly(float* C, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n) {
+        C[i] = 1.0f;
+    }
+}
+
+__global__ void vectorSumReadOnly(float* A, float* B, float* C, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if(i < n) {
+        float result = A[i] + B[i];
+        // Discard result - prevent compiler from optimizing away reads
+        if(result < -999999.0f) {
+            C[0] = result;
+        }
+    }
+}
+
+/*
+    CACHE HINTING TEST
+*/
+
+__global__ void vectorAddPTX_CacheStreamed(float* A, float* B, float* C, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if(i < n) {
+        float a, b, c;
+
+        // Load float A
+        // "Load.GlobalMemory.CachedStreaming.Float32 Output, Input (dereferenced)" : "writeOnlyFloat"(Output) : "64bitPointer"(Input)
+        asm("ld.global.cs.f32 %0, [%1];" : "=f"(a) : "l"(&A[i]));
+
+        // Load float B
+        // "Load.GlobalMemory.CachedStreaming.Float32 Output, Input (dereferenced)" : "writeOnlyFloat"(Output) : "64bitPointer"(Input)
+        asm("ld.global.cs.f32 %0, [%1];" : "=f"(b) : "l"(&B[i]));
+
+        // Calculate A + B
+        // "Add.Float32 Output, Input1, Input2" : "writeOnlyFloat"(Output) : "float"(input1), "float"(input2);
+        asm("add.f32 %0, %1, %2;" : "=f"(c) : "f"(a), "f"(b));
+
+        //Store float C
+        // "Store.GlobalMemory.CachedStreaming.Float32, Input1, Input2" :: 64bitPointer(input1), "float"(input2)
+        // In PTX, input means data needed before the command functions, and output means if a value has been modified, which 
+        // in this case it has not.
+        asm("st.global.cs.f32 [%0], %1;" :: "l"(&C[i]), "f"(c));
+    }
+}
+
+
+__global__ void vectorAddPTX_LastUse(float* A, float* B, float* C, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if(i < n) {
+        float a, b, c;
+
+        // Load float A
+        // "Load.GlobalMemory.CachedStreaming.Float32 Output, Input (dereferenced)" : "writeOnlyFloat"(Output) : "64bitPointer"(Input)
+        asm("ld.global.lu.f32 %0, [%1];" : "=f"(a) : "l"(&A[i]));
+
+        // Load float B
+        // "Load.GlobalMemory.CachedStreaming.Float32 Output, Input (dereferenced)" : "writeOnlyFloat"(Output) : "64bitPointer"(Input)
+        asm("ld.global.lu.f32 %0, [%1];" : "=f"(b) : "l"(&B[i]));
+
+        // Calculate A + B
+        // "Add.Float32 Output, Input1, Input2" : "writeOnlyFloat"(Output) : "float"(input1), "float"(input2);
+        asm("add.f32 %0, %1, %2;" : "=f"(c) : "f"(a), "f"(b));
+
+        //Store float C
+        // "Store.GlobalMemory.CachedStreaming.Float32, Input1, Input2" :: 64bitPointer(input1), "float"(input2)
+        // In PTX, input means data needed before the command functions, and output means if a value has been modified, which 
+        // in this case it has not.
+        asm("st.global.cs.f32 [%0], %1;" :: "l"(&C[i]), "f"(c));
+    }
+}
+
+
+/*
+    INSTRUCTION LEVEL PARALLELISM ISOLATED 
+*/
+
+__global__ void vectorSumILP(float* A, float* B, float* C, int n) {
+    int i0 = blockIdx.x * blockDim.x + threadIdx.x;
+
+    int gridSize = blockDim.x * gridDim.x;
+
+    int i1 = i0 + gridSize;
+    int i2 = i0 + gridSize * 2;
+    int i3 = i0 + gridSize * 3;
+    
+    if(i0 < n) {
+        float a0 = A[i0];
+        float a1 = A[i1];
+        float a2 = A[i2];
+        float a3 = A[i3];
+
+        float b0 = B[i0];
+        float b1 = B[i1];
+        float b2 = B[i2];
+        float b3 = B[i3];
+
+        C[i0] = a0 + b0;
+        C[i1] = a1 + b1;
+        C[i2] = a2 + b2;
+        C[i3] = a3 + b3;
+    }
+}
+
+
+
+/*
+    GRID STRIDE ILP=2
+*/
+
+__global__ void vectorSumGridILP2(float* A, float* B, float* C, int n) {
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+
+    for (int i = tid; i < n; i += stride * 2) {
+
+        int i0 = i;
+        int i1 = i + stride;
+
+        // First ILP lane
+        float a0 = A[i0];
+        float b0 = B[i0];
+        C[i0] = a0 + b0;
+
+
+        // Second ILP lane
+        float a1 = A[i1];
+        float b1 = B[i1];
+        C[i1] = a1 + b1;
+    }
+}
+
+
+
+/*
+    GRID STRIDE ILP=4
+*/
+
+__global__ void vectorSumGridILP4(float* A, float* B, float* C, int n) {
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+
+    // Increase the loop jump to stride * 4 to account for the 4 elements per thread
+    for (int i = tid; i < n; i += stride * 4) {
+
+        // Calculate four strided indices to maintain coalescing
+        int i0 = i;
+        int i1 = i + stride;
+        int i2 = i + stride * 2;
+        int i3 = i + stride * 3;
+
+        // Load Phase: Issuing 4 independent loads to fill the memory pipe
+        float a0 = A[i0];
+        float a1 = A[i1];
+        float a2 = A[i2];
+        float a3 = A[i3];
+
+        float b0 = B[i0];
+        float b1 = B[i1];
+        float b2 = B[i2];
+        float b3 = B[i3];
+
+        // Compute and Store Phase
+        C[i0] = a0 + b0;
+        C[i1] = a1 + b1;
+        C[i2] = a2 + b2;
+        C[i3] = a3 + b3;
+    }
+}
+
+
+/*
+    VECTORIZATION without padding
+*/
+
+__global__ void vectorSumVectorizedNoPadding(float* A, float* B, float* C, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    float4* A4 = reinterpret_cast<float4*>(A);
+    float4* B4 = reinterpret_cast<float4*>(B);
+    float4* C4 = reinterpret_cast<float4*>(C);
+
+    if(i < n) {
+
+        float4 a = A4[i];
+        float4 b = B4[i];
+
+        C4[i] = make_float4(
+            a.x + b.x, 
+            a.y + b.y, 
+            a.z + b.z, 
+            a.w + b.w
+        );
+    }
+} 
+
+
+/*
+    L2 CACHE EXPERIMENT, COALESCED VS UNCOALESCED 
+*/
+
+__global__ void writeOnlyCoalesced(float* C, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n) {
+        C[i] = 1.0f;
+    }
+}
+
+__global__ void writeOnlyUncoalesced(float* C, int n) {
+    int i = (blockIdx.x * blockDim.x + threadIdx.x) * 8;
+    if (i < n) {
+        C[i] = 1.0f;
+    }
+}
+
+
+/*
+ NAIVE FP8
+*/
+
+
+__global__ void vectorAddFP8(const float* A, const float* B, __nv_fp8_e4m3* C, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (i < n) {
+        // 1. Pull 32-bit floats from DRAM
+        float a_val = A[i];
+        float b_val = B[i];
+
+        // 2. Compute in FP32
+        float res = a_val + b_val;
+
+        // 3. Cast to FP8 and write 8-bit value to DRAM
+        C[i] = __nv_fp8_e4m3(res);
+    }
+}

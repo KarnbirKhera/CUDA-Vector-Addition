@@ -2,6 +2,8 @@
 #include <fstream>
 #include <vector>
 #include "vectorSumHeader.cuh"
+#include <cuda_runtime.h>
+#include <cuda_fp8.h>
 
 /*
 * On current GPU (RTX 4060):
@@ -24,9 +26,30 @@ struct KernelResult {
     float efficiency_stddev;
 };
 
-const float PEAK_BANDWIDTH_GBS = 272.0f;  // RTX 4060 theoretical peak
 
 std::vector<KernelResult> allResults;  // Store all results for CSV export
+float PEAK_BANDWIDTH_GBS = 0.0f; 
+
+// Helper function to get peak bandwidth
+float getPeakBandwidthGBs() {
+    cudaDeviceProp prop;
+    cudaGetDeviceProperties(&prop, 0);
+    
+    // Memory clock rate in kHz
+    float memClockKHz = prop.memoryClockRate;
+    
+    // Memory bus width in bits
+    int busWidthBits = prop.memoryBusWidth;
+    
+    // Peak bandwidth = (clock rate) × (bus width) × 2 (for DDR)
+    // Convert: kHz → Hz, bits → bytes, result in GB/s
+    float peakBandwidthGBs = (memClockKHz * 1000.0f) * (busWidthBits / 8.0f) * 2.0f / 1e9f;
+    
+    return peakBandwidthGBs;
+}
+
+
+
 
 // Helper function to run benchmark for a kernel
 template<typename KernelFunc>
@@ -38,7 +61,7 @@ KernelResult runBenchmark(const char* name, KernelFunc launchKernel, int n, int 
     size_t total_bytes = (size_t)n * 3 * sizeof(float);
     
     // Warmup
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 5; i++) {
         launchKernel();
     }
     cudaDeviceSynchronize();
@@ -91,6 +114,9 @@ KernelResult runBenchmark(const char* name, KernelFunc launchKernel, int n, int 
     float throughput_stddev = sqrt(throughput_sum_sq_diff / numTrials);
     
     // Calculate efficiency and its stddev
+
+
+
     float efficiency = (throughput_mean / PEAK_BANDWIDTH_GBS) * 100.0f;
     float efficiency_stddev = (throughput_stddev / PEAK_BANDWIDTH_GBS) * 100.0f;
     
@@ -125,45 +151,57 @@ void runAllBenchmarks(int n, const char* sizeLabel) {
     cudaMemcpy(d_b, h_b, size, cudaMemcpyHostToDevice);
 
     int blocks_per_sm;
-    KernelResult results[6];
+    KernelResult results[8];
+    
 
     // 1. NAIVE
     int naive_blocks = (n + THREADS - 1) / THREADS;
     results[0] = runBenchmark("Naive", [&]() {
         vectorSum<<<naive_blocks, THREADS>>>(d_a, d_b, d_c, n);
     }, n, NUM_OF_TRIALS);
+    
+    results[1] = runBenchmark("Naive PTX Cache Strmd", [&]() {
+        vectorAddPTX_CacheStreamed<<<naive_blocks, THREADS>>>(d_a, d_b, d_c, n);
+    }, n, NUM_OF_TRIALS);
 
     // 2. GRID STRIDE
     cudaOccupancyMaxActiveBlocksPerMultiprocessor(&blocks_per_sm, gridStrideVectorSum, THREADS, 0);
     int grid_blocks = prop.multiProcessorCount * blocks_per_sm;
-    results[1] = runBenchmark("Grid Stride", [&]() {
+    results[2] = runBenchmark("Grid Stride", [&]() {
         gridStrideVectorSum<<<grid_blocks, THREADS>>>(d_a, d_b, d_c, n);
     }, n, NUM_OF_TRIALS);
 
     // 3. VECTORIZED
     int vec_blocks = ((n + 3) / 4 + THREADS - 1) / THREADS;
-    results[2] = runBenchmark("Vectorized", [&]() {
+    results[3] = runBenchmark("Vectorized", [&]() {
         vectorizedVectorSum<<<vec_blocks, THREADS>>>(d_a, d_b, d_c, n);
+    }, n, NUM_OF_TRIALS);
+
+    results[4] = runBenchmark("Vectorized, No Padding", [&]() {
+        int vec_blocks = ((n + 3) / 4 + THREADS - 1) / THREADS;
+        vectorSumVectorizedNoPadding<<<vec_blocks, THREADS>>>(d_a, d_b, d_c, n);
     }, n, NUM_OF_TRIALS);
 
     // 4. VEC + GRID
     cudaOccupancyMaxActiveBlocksPerMultiprocessor(&blocks_per_sm, gridVectorizedVectorSum, THREADS, 0);
     int gridvec_blocks = prop.multiProcessorCount * blocks_per_sm;
-    results[3] = runBenchmark("Vec + Grid", [&]() {
+    results[5] = runBenchmark("Vec + Grid", [&]() {
         gridVectorizedVectorSum<<<gridvec_blocks, THREADS>>>(d_a, d_b, d_c, n);
     }, n, NUM_OF_TRIALS);
+
+    
 
     // 5. VEC + GRID + ILP=2
     cudaOccupancyMaxActiveBlocksPerMultiprocessor(&blocks_per_sm, ILP2VectorizedGridVectorSum, THREADS, 0);
     int ilp2_blocks = prop.multiProcessorCount * blocks_per_sm;
-    results[4] = runBenchmark("Vec + Grid + ILP=2", [&]() {
+    results[6] = runBenchmark("Vec + Grid + ILP=2", [&]() {
         ILP2VectorizedGridVectorSum<<<ilp2_blocks, THREADS>>>(d_a, d_b, d_c, n);
     }, n, NUM_OF_TRIALS);
 
     // 6. VEC + GRID + ILP=4
     cudaOccupancyMaxActiveBlocksPerMultiprocessor(&blocks_per_sm, ILP4VectorizedGridVectorSum, THREADS, 0);
     int ilp4_blocks = prop.multiProcessorCount * blocks_per_sm;
-    results[5] = runBenchmark("Vec + Grid + ILP=4", [&]() {
+    results[7] = runBenchmark("Vec + Grid + ILP=4", [&]() {
         ILP4VectorizedGridVectorSum<<<ilp4_blocks, THREADS>>>(d_a, d_b, d_c, n);
     }, n, NUM_OF_TRIALS);
 
@@ -171,7 +209,7 @@ void runAllBenchmarks(int n, const char* sizeLabel) {
     printf("\n==================== RESULTS (%s) ====================\n", sizeLabel);
     printf("%-22s %-20s %-22s %-18s\n", "Kernel", "Time (ms)", "Throughput (GB/s)", "Efficiency");
     printf("------------------------------------------------------------------------------------\n");
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < 8; i++) {
         printf("%-22s %7.4f +/- %-7.4f %7.2f +/- %-7.2f %6.2f +/- %-5.2f%%\n", 
                results[i].name, 
                results[i].time_mean, 
@@ -300,6 +338,11 @@ TEST(Correctness, AllKernels) {
             gridVectorizedVectorSum<<<prop.multiProcessorCount * blocks_per_sm, THREADS>>>(d_a, d_b, d_c, n);
         });
 
+        // 4.5. ILP=4 ISOLATED
+        testKernel("Vectorized", [&]() {
+            vectorSumILP<<<vec_blocks, THREADS>>>(d_a, d_b, d_c, n);
+        });
+
         // 5. ILP=2 + Vectorized + Grid Stride
         cudaOccupancyMaxActiveBlocksPerMultiprocessor(&blocks_per_sm, ILP2VectorizedGridVectorSum, THREADS, 0);
         testKernel("VecGridILP2", [&]() {
@@ -376,6 +419,97 @@ TEST(Profile, SingleRun) {
     cudaOccupancyMaxActiveBlocksPerMultiprocessor(&blocks_per_sm, ILP4VectorizedGridVectorSum, THREADS, 0);
     ILP4VectorizedGridVectorSum<<<prop.multiProcessorCount * blocks_per_sm, THREADS>>>(d_a, d_b, d_c, n);
     cudaDeviceSynchronize();
+
+
+    // 1. Naive Write Only
+    vectorSumWriteOnly<<<naive_blocks, THREADS>>>(d_c, n);
+    cudaDeviceSynchronize();
+
+    // 1. Naive Read Only
+    vectorSumReadOnly<<<naive_blocks, THREADS>>>(d_a, d_b, d_c, n);
+    cudaDeviceSynchronize();
+
+    
+    // 2. Naive, PTX modified for cached streaming (.cs)
+    vectorAddPTX_CacheStreamed<<<naive_blocks, THREADS>>>(d_a, d_b, d_c, n);
+    cudaDeviceSynchronize();
+
+    // 2. Naive, PTX modified for cached streaming (.cs)
+    vectorAddPTX_LastUse<<<naive_blocks, THREADS>>>(d_a, d_b, d_c, n);
+    cudaDeviceSynchronize();
+
+
+    // 3. ILP=4
+    vectorSumILP<<<vec_blocks, THREADS>>>(d_a, d_b, d_c, n);
+    cudaDeviceSynchronize();
+
+     // 3. ILP=2 + Grid
+    vectorSumGridILP2<<<144, THREADS>>>(d_a, d_b, d_c, n);
+    cudaDeviceSynchronize();
+
+    // 3. ILP=4 + Grid
+    vectorSumGridILP4<<<144, THREADS>>>(d_a, d_b, d_c, n);
+    cudaDeviceSynchronize();
+
+
+    // 3. Vectorized
+    vectorSumVectorizedNoPadding<<<vec_blocks, THREADS>>>(d_a, d_b, d_c, n);
+    cudaDeviceSynchronize();
+    
+    
+    // 2. Naive, PTX modified for cached streaming (.cs)
+    writeOnlyUncoalesced<<<naive_blocks, THREADS>>>(d_c, n);
+    cudaDeviceSynchronize();
+
+
+
+    free(h_a);
+    free(h_b);
+    cudaFree(d_a);
+    cudaFree(d_b);
+    cudaFree(d_c);
+}
+
+TEST(Profile, NaiveL2FullTest) {
+    int n = 200000000;
+    size_t size = n * sizeof(float);
+    const int THREADS = 256;
+    
+    cudaDeviceProp prop;
+    cudaGetDeviceProperties(&prop, 0);
+    
+    float *h_a = (float*)malloc(size);
+    float *h_b = (float*)malloc(size);
+    float *d_a, *d_b, *d_c;
+    
+    for (int i = 0; i < n; i++) {
+        h_a[i] = 1.0f;
+        h_b[i] = 2.0f;
+    }
+    
+    cudaMalloc(&d_a, size);
+    cudaMalloc(&d_b, size);
+    cudaMalloc(&d_c, size);
+    cudaMemcpy(d_a, h_a, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_b, h_b, size, cudaMemcpyHostToDevice);
+    
+    // 1. Naive
+    int naive_blocks = (n + THREADS - 1) / THREADS;
+    vectorSum<<<naive_blocks, THREADS>>>(d_a, d_b, d_c, n);
+    cudaDeviceSynchronize();
+
+    // 2. Write Only
+    vectorSumWriteOnly<<<naive_blocks, THREADS>>>(d_c, n);
+    cudaDeviceSynchronize();
+
+    // 3. Read Only
+    vectorSumReadOnly<<<naive_blocks, THREADS>>>(d_a, d_b, d_c, n);
+    cudaDeviceSynchronize();
+
+    // 4. Un-coalesced Read Only
+    writeOnlyUncoalesced<<<naive_blocks, THREADS>>>(d_c, n);
+    cudaDeviceSynchronize();
+    
     
     free(h_a);
     free(h_b);
@@ -384,14 +518,145 @@ TEST(Profile, SingleRun) {
     cudaFree(d_c);
 }
 
+TEST(Profile, ILPTest) {
+    int n = 200000000;
+    size_t size = n * sizeof(float);
+    const int THREADS = 256;
+    const int BLOCKS = 864; // Matching blocks for apples-to-apples comparison
+
+    float *h_a = (float*)malloc(size);
+    float *h_b = (float*)malloc(size);
+    float *h_res = (float*)malloc(size); // To verify results
+    float *d_a, *d_b, *d_c;
+
+    // Initialize host data
+    for (int i = 0; i < n; i++) {
+        h_a[i] = 1.0f;
+        h_b[i] = 2.0f;
+    }
+
+    // Allocate device memory
+    cudaMalloc(&d_a, size);
+    cudaMalloc(&d_b, size);
+    cudaMalloc(&d_c, size);
+
+    // Copy inputs to device
+    cudaMemcpy(d_a, h_a, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_b, h_b, size, cudaMemcpyHostToDevice);
+
+    // --- 1. Naive + Grid ---
+    gridStrideVectorSum<<<BLOCKS, THREADS>>>(d_a, d_b, d_c, n);
+    cudaDeviceSynchronize();
+
+    // Verification 1
+    cudaMemcpy(h_res, d_c, size, cudaMemcpyDeviceToHost);
+
+    // First 10
+    for (int i = 0; i < 10; i++)
+        ASSERT_NEAR(h_res[i], 3.0f, 1e-5);
+
+    // Last 10
+    for (int i = n - 10; i < n; i++)
+        ASSERT_NEAR(h_res[i], 3.0f, 1e-5);
+
+    // Reset d_c so ILP doesn't inherit existing results
+    cudaMemset(d_c, 0, size);
+
+    // --- 2. ILP=4 + Grid ---
+    vectorSumGridILP4<<<BLOCKS, THREADS>>>(d_a, d_b, d_c, n);
+    cudaDeviceSynchronize();
+
+    // Verification 2
+    cudaMemcpy(h_res, d_c, size, cudaMemcpyDeviceToHost);
+
+    // First 10
+    for (int i = 0; i < 10; i++)
+        ASSERT_NEAR(h_res[i], 3.0f, 1e-5);
+
+    // Last 10
+    for (int i = n - 10; i < n; i++)
+        ASSERT_NEAR(h_res[i], 3.0f, 1e-5);
+
+    // Cleanup
+    free(h_a);
+    free(h_b);
+    free(h_res);
+    cudaFree(d_a);
+    cudaFree(d_b);
+    cudaFree(d_c);
+}
 
 
 TEST(ExportCSV, WriteResults) {
     writeCSV("benchmark_results.csv");
 }
 
+TEST(Profile, L2WritePolicyValidation) {
+    const int N = 10000000;
+    const int THREADS = 256;
+    const int BLOCKS = (N + THREADS - 1) / THREADS;
+
+    // 80M element allocation to accommodate stride-8 access
+    const size_t ALLOC_SIZE = (size_t)N * 8 * sizeof(float);
+    float *d_c;
+    cudaMalloc(&d_c, ALLOC_SIZE);
+
+    // ---- Coalesced: 10M threads, each writes 4 bytes to consecutive addresses ----
+    // Every sector gets all 32 bytes written (8 threads per sector)
+    // Prediction: DRAM read-to-write ratio near zero
+    cudaMemset(d_c, 0, ALLOC_SIZE);
+    cudaDeviceSynchronize();
+    writeOnlyCoalesced<<<BLOCKS, THREADS>>>(d_c, N);
+    cudaDeviceSynchronize();
+    ASSERT_EQ(cudaGetLastError(), cudaSuccess);
+
+    // ---- Uncoalesced: 10M threads, each writes 4 bytes with stride 8 ----
+    // Every sector gets only 4 of 32 bytes written (1 thread per sector)
+    // Prediction: DRAM read-to-write ratio near 1:1
+    cudaMemset(d_c, 0, ALLOC_SIZE);
+    cudaDeviceSynchronize();
+    writeOnlyUncoalesced<<<BLOCKS, THREADS>>>(d_c, N * 8);
+    cudaDeviceSynchronize();
+    ASSERT_EQ(cudaGetLastError(), cudaSuccess);
+
+    cudaFree(d_c);
+}
+
+
+TEST(Profile, FP32_vs_FP8) {
+    const int n = 200000000; // 200M elements
+    const int threads = 256;
+    const int blocks = (n + threads - 1) / threads;
+
+    // 1. Allocate Memory
+    float *d_a, *d_b, *d_out32;
+    __nv_fp8_e4m3 *d_out8;
+    
+    cudaMalloc(&d_a, n * sizeof(float));
+    cudaMalloc(&d_b, n * sizeof(float));
+    cudaMalloc(&d_out32, n * sizeof(float));
+    cudaMalloc(&d_out8, n * sizeof(__nv_fp8_e4m3));
+
+
+    vectorSum<<<blocks, threads>>>(d_a, d_b, d_out32, n);
+    cudaDeviceSynchronize();
+
+    vectorAddFP8<<<blocks, threads>>>(d_a, d_b, d_out8, n);
+    cudaDeviceSynchronize();
+
+    cudaFree(d_a); 
+    cudaFree(d_b); 
+    cudaFree(d_out32); 
+    cudaFree(d_out8);
+}
+
 
 int main(int argc, char **argv) {
+    PEAK_BANDWIDTH_GBS = getPeakBandwidthGBs();
+    printf("====================================\n");
+    printf("Detected Peak Bandwidth: %.2f GB/s\n", PEAK_BANDWIDTH_GBS);
+    printf("====================================\n\n");
+
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
