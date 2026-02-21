@@ -215,7 +215,7 @@ Say we have the following scenario where both SM One and SM Two are writing to t
   
 <br><br>
 
-The in-efficiency lies where the DRAM's single row buffer does not allow the full strength of parallel programming to shine, and this is where the L2 cache comes in. The way the L2 cache works is the following:
+The inefficiency lies where the DRAM's single row buffer does not allow the full strength of parallel programming to shine, and this is where the L2 cache comes in. The way the L2 cache works is the following:
 
 - SM One: Writes to L2 cache with a single value, targeted at memory sector A in the DRAM
 - SM Two: Writes to L2 cache with a single value, targeted at memory sector B in the DRAM
@@ -240,7 +240,7 @@ Now going back to the STG.E, it turns out after more research the .E is actually
 
 Looking at vector add kernel, we know that the entire process itself is purely streamed data, meaning data is loaded once, and never used or needed again. We can actually modify this cache policy with a ".cs" modifier which hints to the PTX to SASS compiler that the data is not needed once used, allowing it to be evicted first, which should in theory indirectly allow for more data to flow through the L2 cache. The reason this would theoretically allow more data to flow is because the default cache policy evicts the oldest or least recently used, but using the ".cs" should save the cache controller time and compute as it does not need to find/calculate the oldest cache line. 
 
-However, I would imagine this comes at a cost of having to "tag" or use meta-data to convey to the compiler that this specific cache line can be evicted first. I would once again imagine, when n is low the cost of adding this "tag" would likely outweigh its need, whereas if we have a large n size, the "tag" overhead becomes minimial.
+However, I would imagine this comes at a cost of having to "tag" or use meta-data to convey to the compiler that this specific cache line can be evicted first. I would once again imagine, when n is low the cost of adding this "tag" would likely outweigh its need, whereas if we have a large n size, the "tag" overhead becomes minimal.
 
 There is also another cache policy modifier known as .lu (Last Use). This means once the cache line is utilized, the cache line is disposed of even if the L2 cache is not full. This likely has the same n size use case mentioned for .cs (Cached Streaming).
 
@@ -283,7 +283,7 @@ After realizing this inconsistency, I ended up doing some research to understand
 To start off, I'll explain the first source from my prior section (https://forums.developer.nvidia.com/t/how-do-gpus-handle-writes/58914/5) which I believe explains half of the behavior we saw with our L2 cache. This post mentions the following two possibilities for the write mechanic used by the L2 Cache:
 
 - When performing a write, The L2 cache marks the valid and invalid bytes (bytes that were changed versus not) using a mask. The DRAM then reads this mask when the cache line is evicted from the L2 and updates the values accordingly.
-- When performing a write, the L2 cache immediately reads the sector from the DRAM on a write miss, and then the L2 cache updates the needed values of the sector just read, and the values in the DRAM are updated once the cache line has been evicted (This is the read-write policy is the theory I orginally adopted).
+- When performing a write, the L2 cache immediately reads the sector from the DRAM on a write miss, and then the L2 cache updates the needed values of the sector just read, and the values in the DRAM are updated once the cache line has been evicted (This is the read-write policy is the theory I originally adopted).
 
 Now our second source "Exploring Modern GPU Memory System Design Challenges through Accurate Modeling" (https://arxiv.org/abs/1810.07269) published on arXiv provides empirical evidence for a different write policy named "write-validate" based on the Volta architecture.
 
@@ -398,7 +398,7 @@ The reason why I believe the hit rate of writes is always a 100% is because no m
   - Why this happened:
     - This is the direct reason why when it comes to reducing instructions, why Vectorization is such a great tool. Rather than a single thread requesting a single float, we request for 4 floats at once using a single memory request. At first when I learned about Vectorization it seemed very counter-intuitive because while we request 4 floats with a single memory request, doesn't that mean we need to move 4x the amount of data therefore, likely take four times the amount of time? It turns out it actually takes nearly the exact amount of time, and the reason it does is actually very exciting and goes to the core of the GPU architecture.
     
-    - The reason why receiving 4 floats at once is very similar to the amount of time it takes to receive a single float. is because of the way the DRAM's architecture is setup. When we request a single 4 byte float, we are essentially eating the cost of reading the DRAM sector for just a 1/4th of the data it holds, although note in reality instructional commands are executed at the warp level so we would actually use all 32 bytes in said sector. When we use Vectorization, we still eat the same cost of reading the DRAM sector, but we are using 16 bytes out of the 32 bytes that sector holds so we are essentially getting more data per read, and again at a warp level we are actually using all of the data contained within this DRAM sector.
+    - The reason why receiving 4 floats at once is very similar to the amount of time it takes to receive a single float. is because of the way the DRAM's architecture is setup. When we request a single 4 byte float, we are essentially eating the cost of reading the DRAM sector for just a 1/4th of the data it holds, although note in reality instruction commands are executed at the warp level so we would actually use all 32 bytes in said sector. When we use Vectorization, we still eat the same cost of reading the DRAM sector, but we are using 16 bytes out of the 32 bytes that sector holds so we are essentially getting more data per read, and again at a warp level we are actually using all of the data contained within this DRAM sector.
 
 While understanding this, I thought why dont we use float8 instead? Because wouldn't 8 floats mean the thread would perfectly request 32 bytes of data, which perfectly fits the 32 byte DRAM sector using just a single memory request? The reasoning why this wouldn't be as efficient is again leads us back to the GPU architecture, specifically to the size of the 128 bit memory bus from the L1 cache to the registers.<br><br>
 
@@ -426,28 +426,28 @@ While float8 is not supported in CUDA, so our earlier float8 analysis is just th
      - When compared to float2, we are producing 2x the instructions needed for the same amount of data.
      - When compared to float4, we are producing 4x the instructions than needed for the same amount of data.
    - Use Case:
-     - If the bottleneck is register pressure, we can trade register pressure for instructional pressure.
+     - If the bottleneck is register pressure, we can trade register pressure for instruction pressure.
         
  **Float2:**
    - Pros
-     - Great compared to float because 2x less instructional pressure
+     - Great compared to float because 2x less instruction pressure
      - Great compared to float4 because slightly less register pressure
    - Cons
      - When compared to float, we have a slight increase in register pressure. 
      - When compared to float4, we are producing 2 times the instructions than needed for the same amount of data float4 produces.
    - Use Case:
-     - If we want to slightly trade increased register pressure, for decreased instructional pressure.
+     - If we want to slightly trade increased register pressure, for decreased instruction pressure.
        
  **Float4:**
    - Pros
-     - Great compared to float because 4x less instructional pressure
-     - Great compared to float2 because 2x less instructional pressure
+     - Great compared to float because 4x less instruction pressure
+     - Great compared to float2 because 2x less instruction pressure
    - Cons
      - Compared to float, modererate increased register pressure
      - Compared to float2, slight increased register pressure
    - Use Case
-     - If we want to trade moderate increase in register pressure for a moderate decrease in instructional pressure.
-     - Float4 is effectively the tipping point where we move the most amount of data for the least amount of instructional pressure.
+     - If we want to trade moderate increase in register pressure for a moderate decrease in instruction pressure.
+     - Float4 is effectively the tipping point where we move the most amount of data for the least amount of instruction pressure.
         
  **Float8:**
    - Inefficient as it requires two LDG.128 loads instructions.
@@ -460,7 +460,7 @@ While float8 is not supported in CUDA, so our earlier float8 analysis is just th
 
 **1. Significant Decrease in Eligible Warps Per Scheduler [warp] (-56.40%): 0.06 -> 0.03**
   - Why this happened:
-    - To use Vectorization within this context where we do not use grid stride, we must launch n/4 threads. This means although the techinique itself does not reduce parallelism, to ensure we compute all the given elements and nothing less and nothing more, we must aunch fewer warps compared to the naive which means less warps to switch to for the SM when one stalls.<br><br>
+    - To use Vectorization within this context where we do not use grid stride, we must launch n/4 threads. This means although the technique itself does not reduce parallelism, to ensure we compute all the given elements and nothing less and nothing more, we must launch fewer warps compared to the naive which means less warps to switch to for the SM when one stalls.<br><br>
       
     > _Note: Vectorization itself does not reduce parallelism, rather without grid stride we must launch a quarter of the threads compared to the naive. This means the reduction in parallelism is because of the launch condition and not the technique itself._
     
@@ -546,7 +546,7 @@ While float8 is not supported in CUDA, so our earlier float8 analysis is just th
 1A. Executed Instruction per Cycle (-16.89%) 0.22 -> 0.19<br>
 1B. Eligible Warps per Scheduler (+0.17%) 0.06 -> 0.07
    - What this means:
-     - With my current mental model, these two statistics point out as interesting to me, and I think at the moment they may show something positive despite a reduced IPC often meaning the kernel is less performative. To start from the beginning, vector add is a memory bound kernel, this means to squeeze out more performance from my current understanding we have the following avenues to pursue
+     - With my current mental model, these two statistics point out as interesting to me, and I think at the moment they may show something positive despite a reduced IPC often meaning the kernel is less performant. To start from the beginning, vector add is a memory bound kernel, this means to squeeze out more performance from my current understanding we have the following avenues to pursue
        - Increase parallelism to increase latency hiding by increasing the number of eligible warps per scheduler
        - Reduce memory dependencies to decrease long scoreboard stalls
        - Reduce computation dependency to either reduce long scoreboard stalls, or allow for more active occupancy by reducing register count if that is the limiting factor.
@@ -611,7 +611,7 @@ $$ \text{Arithmetic Intensity} (AI) = \frac{\text{Total Operations (FLOPs)}}{\te
 
   - For vector add we concluded that it performs two reads (A and B) a single write (C) and performs a single floating point operation (add). This results in a FLOPs/byte of 0.08, which between compute and memory bound, this tells us our kernel is memory bound.
   
-  - While this provides a great insight into what our bottleneck might be between compute and memory, it turns out theres a even sneakier possible bottleneck. It turns out another potential bottleneck is actually latency! Latency bound is when the number of instructions being performed is significantly more than the L2 cache can handle. From my current understanding, this results in the write-back buffer in the L2 cache to be very convoluted to the point where if the write buffer is full, the L2 cache has to stop all reads and write warps to evict all of the dirty cache lines.<br><br><br><br><br><br>
+  - While this provides a great insight into what our bottleneck might be between compute and memory, it turns out theres a even sneakier possible bottleneck. It turns out another potential bottleneck is actually latency! Latency bound is when the number of instructions being performed is significantly more than the L2 cache can handle. From my current understanding, this results in the write-back buffer in the L2 cache to be very saturated to the point where if the write buffer is full, the L2 cache has to stop all reads and write warps to evict all of the dirty cache lines.<br><br><br><br><br><br>
 
 
 
@@ -875,31 +875,31 @@ With this dissected view of our bottleneck, we can actually infer what we can do
 
 > **A lesson into Exponent and Mantissa Bits**
 >
-> While researching the different float types, I will be honest, I did not know what Exponent or Mantissa bits were. After looking into it, this is my current understanding of them, and I hope those who are also new to the different float types, that this provides a helpful way to understand them.
+> While researching the different float types, I will be honest, I did not know what exponent or Mantissa bits were. After looking into it, this is my current understanding of them, and I hope those who are also new to the different float types, that this provides a helpful way to understand them.
 >
 > Mantissa Bits are the bits that actually say how many digits do we hold? Mantissa bits determine whether our value type can hold say the value "1231923" or just the value "123"
 > 
-> Exponent Bits are the bits that actually say now where does the decimal point go? Say we have an negative exponent bit, we can turn the "1231923" value to "123.1923" or to "0.00001231923"
+> Exponent Bits are the bits that actually say now where does the decimal point go? Say we have a negative exponent bit, we can turn the "1231923" value to "123.1923" or to "0.00001231923"
 >
 > One question I had was, how are the extra 0.0000 values stored? Wouldnt that result in needing more memory? This is where the beauty of the exponent bit comes in. Say we have the the orginal number 0.00001231923, the way the computer actually stores the value is this following
 > - Mantissa value: 1231923
 > - Exponent Value: -11
-> Using these values, when the computer wants the same number again, it can use the Mantissa value of 1231923, then multiply it by 10^-11, and now we're back to our original number of 0.00001231923 without needing additional bits to store the leading zeros!
+> Using these values, when the computer wants the same number again, it can use the mantissa value of 1231923, then multiply it by 10^-11, and now we're back to our original number of 0.00001231923 without needing additional bits to store the leading zeros!
 > 
-> _Note: In reality, the Mantissa would store the value as 1.231923 which would result in our exponent value being -5, but for the sake of learning, we will treat it as an integer._
+> _Note: In reality, the mantissa would store the value as 1.231923 which would result in our exponent value being -5, but for the sake of learning, we will treat it as an integer._
 >
 >
 > While this is an amazing system to store values, there is a drawback that we should be aware of.
 >
-> Say we can hold a single digit using our Mantissa bit where we can hold 1, 2, 3, 4, 5, 6, 7, 8 and 9. Now lets say we apply our exponent bit, this lets us represent those single digits values into say double digit values such as 10, 20, 30, 40, 50, 60, 70, 80 and 90. As we can see, we are unable to express the values inbetween our numbers. Say we had a value of 76, the computer would have to round to the nearest value we can express which would be 80.
+> Say we can hold a single digit using our mantissa bit where we can hold 1, 2, 3, 4, 5, 6, 7, 8 and 9. Now lets say we apply our exponent bit, this lets us represent those single digits values into say double digit values such as 10, 20, 30, 40, 50, 60, 70, 80 and 90. As we can see, we are unable to express the values inbetween our numbers. Say we had a value of 76, the computer would have to round to the nearest value we can express which would be 80.
 > 
 > Now what if our exponent bit allows us to express the hundreds place? Now our values can represent 100, 200, 300, 400, 500, 600, 700, 800 and 900. This means the values we are unable to express are even larger, and say we have a value of 151, the computer must round to the nearest digit which is 200. This means the greater our values from zero, the more larger these jumps between numbers become. Now in a field like machine learning where in a neural network during back propagation where absolute precision matters, we can imagine why this may be a problem.
 >
 >
 >
-> Now to solve this we can either trade a Exponent bit for a Mantissa bit. This would allow us to have two digits allowing for more granularity, but we lose some of our range. If we continue our last example, this would mean we can express numbers like 76 or 15, but we lose our ability to represent the hundreds place.
+> Now to solve this we can either trade a exponent bit for a mantissa bit. This would allow us to have two digits allowing for more granularity, but we lose some of our range. If we continue our last example, this would mean we can express numbers like 76 or 15, but we lose our ability to represent the hundreds place.
 >
-> Another way to solve this is to increase the size of the type of value itself so rather trading a Mantissa bit for an Exponent, we can increase the total number of bits.
+> Another way to solve this is to increase the size of the type of value itself so rather trading a mantissa bit for an exponent, we can increase the total number of bits.
 >
 > _Note: We assumed a base 10 for our exponent values, but in reality the computer uses a base of 2._
 
