@@ -268,7 +268,7 @@ Well this is very, very exciting! While making a LinkedIn post about the L2 cach
 - Case One: When writing to DRAM, if cache HIT: A single write instruction
 - Case Two: When writing to DRAM, if cache MISS: A single read instruction, followed later by a write instruction
 
-While this does capture some of the naunces of the L2 cache, it over generalizes the behavior of the L2 cache where it assumes all writes are hits because the data we are modifying is either already in the L2 cache, or is in the L2 cache because of a prior implicit read. The data that I mentioned in the section prior actually supports the idea that my old theory did not fully capture how the L2 cache behaves. The specific data that caught my eye was the following: <br>
+While this does capture some of the nuances of the L2 cache, it over generalizes the behavior of the L2 cache where it assumes all writes are hits because the data we are modifying is either already in the L2 cache, or is in the L2 cache because of a prior implicit read. The data that I mentioned in the section prior actually supports the idea that my old theory did not fully capture how the L2 cache behaves. The specific data that caught my eye was the following: <br>
 
 - lts__t_sector_op_write_hit_rate.pct = 100.00%
 - lts__t_sectors_op_read.sum = 1,538,775
@@ -278,7 +278,7 @@ Lets start with why I thought my theory was correct. The 100% hit rate specifica
 
 If my prior theory was correct, for 25,000,362 sector writes, we would have approximately the same number of reads. This is because naive vector add is perfectly coalesced where a single warp will request to write 128 bytes, which perfectly fits 4 sectors in the DRAM. This means that in my old theory, we should see the same number of reads as the write because each warp will always need to call for new DRAM sectors to modify, but by looking at our data, 1.5M reads is significantly below 25M writes which implies the 1.5M must be some sort of overhead, and not related to the writes done by the L2.
 
-After realizing this inconsistency, I ended up doing some research to understand what might explain this L2 cache behavior. While I wasn't able to find any publically facing NVIDIA documentation to explain this behavior, the following two sources I believe capture what I saw with my data.
+After realizing this inconsistency, I ended up doing some research to understand what might explain this L2 cache behavior. While I wasn't able to find any publicly facing NVIDIA documentation to explain this behavior, the following two sources I believe capture what I saw with my data.
 
 To start off, I'll explain the first source from my prior section (https://forums.developer.nvidia.com/t/how-do-gpus-handle-writes/58914/5) which I believe explains half of the behavior we saw with our L2 cache. This post mentions the following two possibilities for the write mechanic used by the L2 Cache:
 
@@ -460,7 +460,7 @@ While float8 is not supported in CUDA, so our earlier float8 analysis is just th
 
 **1. significant Decrease in Eligible Warps Per Scheduler [warp] (-56.40%): 0.06 -> 0.03**
   - Why this happend:
-    - To use Vectorization withinn this context where we do not use grid stride, we must launch n/4 threads. This means although the techinique itself does not reduce parallelism, to ensure we compute all the given elements and nothing less and nothing more, we must launch less warps compared to the naive which means less warps to switch to for the SM when one stalls.<br><br>
+    - To use Vectorization within this context where we do not use grid stride, we must launch n/4 threads. This means although the techinique itself does not reduce parallelism, to ensure we compute all the given elements and nothing less and nothing more, we must launch less warps compared to the naive which means less warps to switch to for the SM when one stalls.<br><br>
       
     > _Note: Vectorization itself does not reduce parallelism, rather without grid stride we must launch a quarter of the threads compared to the naive. This means the reduction in parallelism is because of the launch condition and not the technique itself._
     
@@ -578,7 +578,7 @@ While float8 is not supported in CUDA, so our earlier float8 analysis is just th
 
 ---
 What this tells me is the following:
-  - Despite the difference betweenn both kernels being the ILP unrolls the loop once, both kernels perform at very similar speeds, throughput and eligible warps where the difference in SM frequency will likely play the most crucial factor in which kernel is faster. This tells me that while my theory was incorrect as ILP did not speed up the kernel beyond what I could consider a negligible/noise difference.
+  - Despite the difference between both kernels being the ILP unrolls the loop once, both kernels perform at very similar speeds, throughput and eligible warps where the difference in SM frequency will likely play the most crucial factor in which kernel is faster. This tells me that while my theory was incorrect as ILP did not speed up the kernel beyond what I could consider a negligible/noise difference.
   - The specific part of my theory that failed was the assumption that ILP could combat the memory bound nature of vector add by increasing parallelism at the instruction level. To update my mental model based off this experiment I would say while we may increase the instruction level parallelism of the kernel, if a warp is stalled and the SM is unable to switch another warp that is not, the kernel still faces the exact same problem as the naive even if we allow parallelism at the instruction level. <br><br><br><br>
 
 
@@ -598,7 +598,7 @@ From this project I learned:
 
   The L2 cache investigation took me two days, and then a few days later I had realized I was wrong and I had to spend another day understanding why. While this might seem mundane at first, being able to connect how the software beautifully uses the hardware to maximize throughput has genuinely, without a single doubt, been the best computer science experience as an undergraduate student. While I have not taken a parallel programming class, so I am unsure about the exact depth of which these many layers interact, and how we can use them to our advantage, I have no doubt that learning and updating my mental model will genuinely be enjoyable.
 
-  The funny thing is the night before I figured this out, I remember thinking all of the possiblities of why the L2 cache policy was the way it was, and I remember finding the arXiv article and all the dots suddenly connecting. This quite literally made me so estatic that I made sure to write "holy macaroni" in this github readme so I wouldn't forget that hey! lets test this theory in the morning, it actually might be the reason why your seeing the numbers your seeing! 
+  The funny thing is the night before I figured this out, I remember thinking all of the possiblities of why the L2 cache policy was the way it was, and I remember finding the arXiv article and all the dots suddenly connecting. This quite literally made me so ecstatic that I made sure to write "holy macaroni" in this github readme so I wouldn't forget that hey! lets test this theory in the morning, it actually might be the reason why your seeing the numbers your seeing! 
 
 
 <h1>What I Would Do Differently</h1>
@@ -655,7 +655,7 @@ $$ \text{Peak FLOPS} = \text{CUDA Cores} \times \text{Clock Speed} \times 1 \tex
 
 
 Needed information to calculate:
-- **Kernel:** N, FLOPs per element, whether the operation is Fused Multipy Add or not
+- **Kernel:** N, FLOPs per element, whether the operation is Fused Multiply Add or not
 - **Hardware:** CUDA cores, clock speed
 
 <br><br><br>
@@ -870,7 +870,7 @@ With this dissected view of our bottleneck, we can actually infer what we can do
     - FP4 (2 Exponent Bits and 1 Mantissa Bit)
       - Size: 4 bits
       - precision: 16 values only
-      - Range: 0, 0.5, 1, 1.5, 2, 3, 4, 6 and their negative counter parts.
+      - Range: 0, 0.5, 1, 1.5, 2, 3, 4, 6 and their negative counterparts.
       - Example: -0.5<br><br>
 
 > **A lesson into Exponent and Mantissa Bits**
