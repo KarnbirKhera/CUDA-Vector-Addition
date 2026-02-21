@@ -185,27 +185,31 @@ After looking into this even more, I found that this read write policy is very i
 
 Say our kernel was able to write directly into the DRAM, bypassing the L2 cache. At first I thought this was a great idea, we'd avoid the L2 cache entirely and I assumed it would result in faster performance. The problem with this is the DRAM can only load a single cache line into its buffer at a time. To write to the DRAM, you first have to open the cache line, this means using the DRAM's 2-8kb cache to load the entire row, this is a ~50 nanosecond action, then writing to the row which is often ~20 nanosecond action. At first this may seem trivial, but from the perspective of parallel programming this can prove very in-efficient.
 
-Say we have the following scenario where both SM One and SM Two are writing to the DRAM in parallel.
+Say we have the following scenario where both SM One and SM Two are writing to the DRAM in parallel.<br><br>
 
 - SM One: Opens cache line A and it is loaded into the DRAM's single row buffer (50 nanoseconds) and writes a single 16 byte value (20 nanoseconds)
 - SM Two: Opens cache line B and it is loaded into the DRAM's single row buffer (50 nanoseconds) and writes a single 16 byte value (20 nanoseconds)
 - SM One: Has to again open cache line A into the DRAM's single row buffer (50 nanoseconds) and writes a 16 byte value (20 nanoseconds)
 - SM Two: Has to again open cache line B into the DRAM's single row buffer (50 nanoseconds) and writes a 16 byte value (20 nanoseconds)
+  
+<br><br>
 
 The in-efficiency lies where the DRAM's single row buffer does not allow the full strength of parallel programming to shine, and this is where the L2 cache comes in. The way the L2 cache works is the following:
 
 > Note from future self:
-> Each memory bank in the DRAM has its own row buffer, not a single row buffer for the entire DRAM.
+> Each memory bank in the DRAM has its own row buffer, not a single row buffer for the entire DRAM.<br><br>
 
 - SM One: Writes to L2 cache with a single value, targeted at memory sector A in the DRAM
 - SM Two: Writes to L2 cache with a single value, targeted at memory sector B in the DRAM
 - SM One: Writes to L2 cache with a single value, targeted at memory sector A in the DRAM
 - SM Two: Writes to L2 cache with a single value, targeted at memory sector B in the DRAM
   
-<br><br>
+<br>
 
 - The L2 cache: Opens a cache line to memory sector A (50 nanoseconds) and batch writes two 16 byte values (~20 nanoseconds)
 - The L2 cache: Opens a cache line to memory sector B (50 nanoseconds) and batch writes two 16 byte values (~20 nanoseconds)
+
+<br>
 
 Rather than needing to re-open cache lines, the L2 cache gathers all the needed values to be written for each memory sector, then does a single read followed by a batch write. This turns an inefficient 280 nanosecond operation into an efficient 140 nanosecond operation.
 
