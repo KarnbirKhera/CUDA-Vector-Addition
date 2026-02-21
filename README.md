@@ -36,7 +36,7 @@ GPU (RTX 4060):<br>
 
 - Naive: establishes a clean baseline with perfect coalescing. 1 thread to 1 element ratio<br>
 - Grid‑stride: Allows kernel to scale using fixed number of blocks per grid while maintaining coalescing. Hardware-aware<br>
-- Vectorized (float4): Allows warp to request 512 bytes per cycle versus naive's 128 bytes, decreasing the required memory instruction to DRAM. 1 thread to 4 element ratio.<br>
+- Vectorized (float4): Allows warp to request 512 bytes per cycle versus naive's 128 bytes, decreasing the required memory instructions to DRAM. 1 thread to 4 element ratio.<br>
 - Instruction Level Parallelism: Each thread issues multiple independent memory requests, allowing for computation as these requests come in to reduce latency.
 
 Tradeoff of each Technique:
@@ -51,7 +51,7 @@ _Increased register pressure can lead to lower occupancy, if register count per 
 <h1>Benchmark Methodology</h1>
 - Time elapsed measured using CUDA Events. This allowed accurate profiling of kernel runtime without launch overhead or other miscellaneous factors such SM clock frequency. <br>
 - Nsight Compute was used for throughput measurements.<br>
-- Efficiency calculated by (Nsight Compute Throughput)/ 272.0, the maximum theoretical memory bandwidth for RTX 4060.
+- Efficiency calculated by (Nsight Compute Throughput)/ 272.0, the theoretical maximum memory bandwidth for RTX 4060.
 <br>
 - For each input size, the respective kernel had three warmup runs, followed by 10 trials which were recorded.
 
@@ -111,7 +111,7 @@ We can see that the kernel will have two read requests (A and B), one floating p
 $$ \text{Arithmetic Intensity} (AI) = \frac{\text{Total Operations (FLOPs)}}{\text{Total Bytes Transferred (Memory Traffic)}} $$
 
 
-The result after plugging in the values results is $$0.08 \text{ } \frac{\text{FLOPs}}{\text{Byte}}$$, when compared to the arithmetic intensity of the RTX 4060 ($$55 \text{ } \frac{\text{FLOPs}}{\text{Byte}}$$), the value is significantly lower which implies the operation is memory bound. This along with the consistent 80% to 90% DRAM bandwidth usage across all techniques and n sizes suggests this kernel is memory bound. <br><br><br>
+The result after plugging in the values results in $$0.08 \text{ } \frac{\text{FLOPs}}{\text{Byte}}$$, when compared to the arithmetic intensity of the RTX 4060 ($$55 \text{ } \frac{\text{FLOPs}}{\text{Byte}}$$), the value is significantly lower which implies the operation is memory bound. This, along with the consistent 80% to 90% DRAM bandwidth usage across all techniques and n sizes, suggests this kernel is memory bound. <br><br><br>
 
 
 
@@ -120,7 +120,7 @@ The result after plugging in the values results is $$0.08 \text{ } \frac{\text{F
 
 <h1>Nsight Compute Findings</h1>
 
-While CUDA timing shows us the runtime of each kernel, Nsight Compute allows us to dig deeper into the more interesting and fundamental parts of our kernel. Getting to explore the roofline model, memory charts, occupancy, warp stall reasons (which has been very helpful) and cache activity has been incredibly helpful for understanding how the GPU responds to each of the optimization techniques. These insights helped me connect the benchmark results to the underlying hardware behavior which I will break down in this section for each optimization in the 200M element trials as it had the lowest standard deviation.
+While CUDA timing shows us the runtime of each kernel, Nsight Compute allows us to dig deeper into the more interesting and fundamental parts of our kernel. Getting to explore the roofline model, memory charts, occupancy, warp stall reasons (which have been very helpful) and cache activity has been incredibly helpful for understanding how the GPU responds to each of the optimization techniques. These insights helped me connect the benchmark results to the underlying hardware behavior which I will break down in this section for each optimization in the 200M element trials as it had the lowest standard deviation.
 <br><br><br>
 
 <h2>Naive NSight Analysis</h2>
@@ -157,7 +157,7 @@ This points out a great distinction between theoretical occupancy and the actual
 
 <h3>Cache Behavior</h3>
 <img width="407" height="598" alt="image" src="https://github.com/user-attachments/assets/a1fe5f9b-8f91-42e5-8cee-7a5720233b57" /><br>
-The naive kernel has an L1 cache hit rate of 0% which is expected as vector add fundamentally does not reuse data. Although, the L2 cache does have a hit rate of 31.53% which is very unexpected. This is interesting because say in the naive kernel, a single thread requests 4 bytes of data, at a warp level memory call, that is 128 bytes. This fits perfectly into the 128 byte cache line of the RTX 4060, and also perfectly accesses four 32 byte sectors in the DRAM, so at the moment this is a mystery to me.<br>
+The naive kernel has an L1 cache hit rate of 0% which is expected as vector add fundamentally does not reuse data. Although, the L2 cache does have a hit rate of 31.53%, which is very unexpected. This is interesting because say in the naive kernel, a single thread requests 4 bytes of data, at a warp level memory call, that is 128 bytes. This fits perfectly into the 128 byte cache line of the RTX 4060, and also perfectly accesses four 32 byte sectors in the DRAM, so at the moment this is a mystery to me.<br>
 
 After looking into why this might be the case, the following provides some insight to this mysterious 31% L2 cache hit rate. To better understand why this might be the case, I isolated the vector add kernel added a write only variant, and a read only variant with the following results. 
 
@@ -274,7 +274,7 @@ While this does capture some of the nuances of the L2 cache, it over generalizes
 - lts__t_sectors_op_read.sum = 1,538,775
 - lts__t_sectors_op_write.sum = 25,000,362
 
-Lets start with why I thought my theory was correct. The 100% hit rate specifically for writes led me to believe that my old theory was true at the time where in either case a hit is always guaranteed. The reason I believe my theory was wrong because of the latter two data points. <br>
+Let's start with why I thought my theory was correct. The 100% hit rate specifically for writes led me to believe that my old theory was true at the time where in either case a hit is always guaranteed. The reason I believe my theory was wrong because of the latter two data points. <br>
 
 If my prior theory was correct, for 25,000,362 sector writes, we would have approximately the same number of reads. This is because naive vector add is perfectly coalesced where a single warp will request to write 128 bytes, which perfectly fits 4 sectors in the DRAM. This means that in my old theory, we should see the same number of reads as the write because each warp will always need to call for new DRAM sectors to modify, but by looking at our data, 1.5M reads is significantly below 25M writes which implies the 1.5M must be some sort of overhead, and not related to the writes done by the L2.
 
@@ -550,7 +550,7 @@ While float8 is not supported in CUDA, so our earlier float8 analysis is just th
        - Increase parallelism to increase latency hiding by increasing the number of eligible warps per scheduler
        - Reduce memory dependencies to decrease long scoreboard stalls
        - Reduce computation dependency to either reduce long scoreboard stalls, or allow for more active occupancy by reducing register count if that is the limiting factor.
-     - I believe what the ILP=4 kernel is doing is the first, but not using more warps, but rather using latency hiding at the instruction level. In hindsight, I suppose the name makes sense where schedulers can hide latency by switching to different warps, but ILP allows for latency hiding at the thread/instruction level.
+     - I believe what the ILP=4 kernel is doing is the first, but not using more warps, but rather using latency hiding at the instruction level. In hindsight, I suppose the name makes sense: schedulers can hide latency schedulers can hide latency by switching to different warps, but ILP allows for latency hiding at the thread/instruction level.
     
      - The reason why the two statistics I chose stood out to me and why I think they're a positive is the following
        - A decrease in IPC by -16.89%
@@ -836,7 +836,7 @@ With this dissected view of our bottleneck, we can actually infer what we can do
   - Standard
     - FP32 (Single precision)
       - Size: 32 bits
-      - precision: ~7 decimal digits
+      - Precision: ~7 decimal digits
       - Range: 10^-38 to 10^38
       - Example: 3.1415926 <br><br>
     - FP16 (Half precision)
@@ -893,7 +893,7 @@ With this dissected view of our bottleneck, we can actually infer what we can do
 >
 > Say we can hold a single digit using our mantissa bit where we can hold 1, 2, 3, 4, 5, 6, 7, 8 and 9. Now lets say we apply our exponent bit, this lets us represent those single digits values into say double digit values such as 10, 20, 30, 40, 50, 60, 70, 80 and 90. As we can see, we are unable to express the values inbetween our numbers. Say we had a value of 76, the computer would have to round to the nearest value we can express which would be 80.
 > 
-> Now what if our exponent bit allows us to express the hundreds place? Now our values can represent 100, 200, 300, 400, 500, 600, 700, 800 and 900. This means the values we are unable to express are even larger, and say we have a value of 151, the computer must round to the nearest digit which is 200. This means the greater our values from zero, the more larger these jumps between numbers become. Now in a field like machine learning where in a neural network during back propagation where absolute precision matters, we can imagine why this may be a problem.
+> Now what if our exponent bit allows us to express the hundreds place? Now our values can represent 100, 200, 300, 400, 500, 600, 700, 800 and 900. This means the values we are unable to express are even larger, and say we have a value of 151, the computer must round to the nearest digit which is 200. This means the greater our values from zero, the larger these jumps between numbers become. Now in a field like machine learning where in a neural network during back propagation where absolute precision matters, we can imagine why this may be a problem.
 >
 >
 >
@@ -913,11 +913,11 @@ On my current RTX 4060 (Ada Lovelace), FP32, FP16/BF16 and FP8 are supported. To
 This is very interesting, because the idea of reducing the byte size was not from profiling the kernel, but rather first calculating the theoretical bottleneck from our equations, and then specifically targeting what can be done to reduce the bottleneck! The reason that the equations derived are so exciting is because its a framework that can be applied to any future kernel! 
 
 <h1>Conclusion</h1>
-This project first started as way for me to learn the memory hierarchy, how to open and read Nsight Compute, and how various optimization techniques such as grid stride, vectorization and ILP would help vector add. I expected it to take maximum a week to finish.
+This project first started as a way for me to learn the memory hierarchy, how to open and read Nsight Compute, and how various optimization techniques such as grid stride, vectorization and ILP would help vector add. I expected it to take maximum a week to finish.
 
 After learning that none of the optimization techniques I used help, this project transitioned from learning just how to code in a parallel programming manner, but rather a deep dive into why GPUs behave the way they do. Looking back, I am eternally grateful that none of the optimization techniques helped because I feel the depth of what I've learned from this project will genuinely be useful for the upcoming kernels I learn.
 
-I am also eternally grateful for this project because I feel as though I've finally found the niche I can imagine a career in. What was supposed to be a 5 page simple Github project on how vector add works, turned into what I'm now looking back at is a 40 page document. I did not mean to spend a month on this project, nor to make it 40 pages, but the genuine excitement of being able to dig deep into why something behaves the way it does made it impossible to stop. From the week long 31% L2 cache investigation to the "holy macaroni" moment I had where right before I went to bed I finally connected the dots and I just had to write something down to make sure I didn't forget, the entire process has been the most fun. I've had with computer science. I am excited for my next kernel, and that feeling of confusion to investigating to understanding and updating my mental model is something I am wanting to and excited to chase.
+I am also eternally grateful for this project because I feel as though I've finally found a niche I can imagine a career in. What was supposed to be a 5 page simple Github project on how vector add works, turned into what I'm now looking back at is a 40 page document. I did not mean to spend a month on this project, nor to make it 40 pages, but the genuine excitement of being able to dig deep into why something behaves the way it does made it impossible to stop. From the week long 31% L2 cache investigation to the "holy macaroni" moment I had where right before I went to bed I finally connected the dots and I just had to write something down to make sure I didn't forget, the entire process has been the most fun. I've had with computer science. I am excited for my next kernel, and that feeling of confusion to investigating to understanding and updating my mental model is something I am wanting to and excited to chase.
 
 While I'm sure this document could have been polished towards something more concrete like an official report where only the right answers are displayed, I feel it's important to demonstrate that not all theories are correct, and its the thought process involved, experimentation and updating of the mental model that matters the most. I feel this especially true as a beginner where often our mental models lack, and it's perfectly okay to be wrong, and it should be encouraged. To any fellow beginners, or future beginners, I hope this document provides both insight into how CUDA works, and the comfort of knowing its okay to be wrong!
 
