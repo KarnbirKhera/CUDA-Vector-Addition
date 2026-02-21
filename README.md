@@ -157,7 +157,7 @@ This points out a great distinction between theoretical occupancy and the actual
 
 <h3>Cache Behavior</h3>
 <img width="407" height="598" alt="image" src="https://github.com/user-attachments/assets/a1fe5f9b-8f91-42e5-8cee-7a5720233b57" /><br>
-The naive kernel has an L1 cache hit rate of 0% which is expected as vector add fundamentally does not reuse data. Although, the L2 cache does have a hit rate of 31.53% which is very unexpected. This is interesting because say in the naive kernel, a single thread requests 4 bytes of data, at a warp level memory call, that is 128 bytes. This fits perfectly into the 128 byte cache line of the RTX 4060, and also perfectly accesses four 32 byte sectors in the DRAM, so at the moment this is a mystery to me.
+The naive kernel has an L1 cache hit rate of 0% which is expected as vector add fundamentally does not reuse data. Although, the L2 cache does have a hit rate of 31.53% which is very unexpected. This is interesting because say in the naive kernel, a single thread requests 4 bytes of data, at a warp level memory call, that is 128 bytes. This fits perfectly into the 128 byte cache line of the RTX 4060, and also perfectly accesses four 32 byte sectors in the DRAM, so at the moment this is a mystery to me.<br>
 
 After looking into why this might be the case, the following provides some insight to this mysterious 31% L2 cache hit rate. To better understand why this might be the case, I isolated the vector add kernel added a write only variant, and a read only variant with the following results. 
 
@@ -183,7 +183,10 @@ We can see from the Nsight compute, the L2 cache hit rate is ~0.07%, which is su
 <img width="451" height="515" alt="image" src="https://github.com/user-attachments/assets/564b7637-e51f-4ec8-841c-703378b9e2ba" />
 <img width="1327" height="445" alt="image" src="https://github.com/user-attachments/assets/dc05e6a7-6fc3-4cc9-a36a-f4a7ff4ef0f7" /> <br>
 
-We can see from the Nsight compute, the L2 cache hit rate is ~96%, which supported by the detailed L2 report. This percentage is made up of 1,538,775 reads and 25,000,362 writes (C[i]). The 1,538,775 reads is very interesting as the code itself has no A[i] and B[i] reads. After further analysis:<br>
+We can see from the Nsight compute, the L2 cache hit rate is ~96%, which supported by the detailed L2 report. This percentage is made up of 1,538,775 reads and 25,000,362 writes (C[i]). The 1,538,775 reads is very interesting as the code itself has no A[i] and B[i] reads. 
+
+<br><br>
+After further analysis:<br>
 
 <img width="1413" height="188" alt="image" src="https://github.com/user-attachments/assets/ed3db8eb-4af4-4984-b1cd-bc7dd2b9ccb1" />
 
