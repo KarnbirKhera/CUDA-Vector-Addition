@@ -324,7 +324,7 @@ The reason why I believe the hit rate of writes is always a 100% is because no m
 
 ### Grid Stride vs Naive
 
-**Performance Result:** 3.07% slower than the Naive
+**Performance Result:** 3.07% slower than the Naive <br>
 **Memory Throughput:** 2.73% less than the Naive
 
 ---
@@ -347,7 +347,7 @@ The reason why I believe the hit rate of writes is always a 100% is because no m
 
 ### Vectorized (float4) vs Naive
 
-**Performance Result:** 0.46% slower than the Naive
+**Performance Result:** 0.46% slower than the Naive<br>
 **Memory Throughput:** 0.05% less than the Naive
 
 ---
@@ -428,7 +428,7 @@ Now lets dig into the pros and cons of each.
 
 ### Naive vs Grid Stride + Vectorized
 
-**Performance Result:** 1.19% slower than Naive
+**Performance Result:** 1.19% slower than Naive<br>
 **Memory Throughput:** 1.32% less than Naive
 
 ---
@@ -473,7 +473,7 @@ Now lets dig into the pros and cons of each.
 
 ### ILP=4 vs Naive
 
-**Performance Result:** 0.36% slower than Naive
+**Performance Result:** 0.36% slower than Naive<br>
 **Memory Throughput:** 0.35% less than Naive
 
 ---
@@ -508,7 +508,7 @@ Now lets dig into the pros and cons of each.
 
 ### Results of ILP=2 + Grid Stride vs Naive + Grid Stride Theory
 
-**Performance Result:** 0.16% slower than Naive + Grid Stride
+**Performance Result:** 0.16% slower than Naive + Grid Stride<br>
 **Memory Throughput:** 0.12% less than Naive + Grid Stride
 
 ---
