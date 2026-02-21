@@ -9,7 +9,7 @@ specific optimization techniques.
 - Understand how different CUDA kernel designs affect performance <br>
 - Explore grid-stride loops, Vectorization and Instruction Level Parallelism (ILP)<br>
 - Learn how register pressure affects occupancy<br>
-- Learning to read NVIDIA Nsight Compute to understand kernels at a deeper level<br>
+- Learn to read NVIDIA Nsight Compute to understand kernels at a deeper level<br>
 - Compare theoretical vs measured memory bandwidth<br>
 
 <h1>Hardware Used</h1>
@@ -398,7 +398,7 @@ The reason why I believe the hit rate of write is always a 100% is because no ma
   - Why this happened:
     - This is the direct reason why when it comes to reducing instructions, why Vectorization is such a great tool. Rather than a single thread requesting a single float, we request for 4 floats at once using a single memory request. At first when I learned about Vectorization it seemed very inadvertent because while we request 4 floats with a single memory request, doesn't that mean we need to move 4x the amount of data therefore, likely take four times the amount of time? It turns out it actually takes nearly the exact amount of time, and the reason it does is actually very exciting and goes to the core of the GPU architecture.
     
-    - The reason why receiving 4 floats at once is very similar to the amount of time it takes to recieve a single float is because of the way the DRAM's architecture is setup. When we request a single 4 byte float, we are essentially eating the cost of reading the DRAM sector for just a 1/4th of the data it holds, although note in reality instructional commands are executed at the warp level so we would actually use all 32 bytes in said sector. When we use Vectorization, we still eat the same cost of reading the DRAM sector, but we are using 16 bytes out of the 32 bytes that sector holds so we are essentially getting more data per read, and again at a warp level we are actually using all of the data contained within this DRAM sector.
+    - The reason why receiving 4 floats at once is very similar to the amount of time it takes to receive a single float. is because of the way the DRAM's architecture is setup. When we request a single 4 byte float, we are essentially eating the cost of reading the DRAM sector for just a 1/4th of the data it holds, although note in reality instructional commands are executed at the warp level so we would actually use all 32 bytes in said sector. When we use Vectorization, we still eat the same cost of reading the DRAM sector, but we are using 16 bytes out of the 32 bytes that sector holds so we are essentially getting more data per read, and again at a warp level we are actually using all of the data contained within this DRAM sector.
 
 While understanding this, I thought why dont we use float8 instead? Because wouldn't 8 floats mean the thread would perfectly request 32 bytes of data, which perfectly fits the 32 byte DRAM sector using just a single memory request? The reasoning why this wouldn't be as efficient is again leads us back to the GPU architecture, specifically to the size of the 128 bit memory bus from the L1 cache to the registers.<br><br>
 
@@ -458,7 +458,7 @@ While float8 is not supported in CUDA, so our earlier float8 analysis is just th
 
 <h3>Why it's slower</h3>
 
-**1. significant Decrease in Eligible Warps Per Scheduler [warp] (-56.40%): 0.06 -> 0.03**
+**1. Significant Decrease in Eligible Warps Per Scheduler [warp] (-56.40%): 0.06 -> 0.03**
   - Why this happened:
     - To use Vectorization within this context where we do not use grid stride, we must launch n/4 threads. This means although the techinique itself does not reduce parallelism, to ensure we compute all the given elements and nothing less and nothing more, we must launch less warps compared to the naive which means less warps to switch to for the SM when one stalls.<br><br>
       
@@ -549,7 +549,7 @@ While float8 is not supported in CUDA, so our earlier float8 analysis is just th
      - With my current mental model, these two statistics point out as interesting to me, and I think at the moment they may show something positive despite a reduced IPC often meaning the kernel is less performative. To start from the beginning, vector add is a memory bound kernel, this means to squeeze out more performance from my current understanding we have the following avenues to pursue
        - Increase parallelism to increase latency hiding by increasing the number of eligible warps per scheduler
        - Reduce memory dependencies to decrease long scoreboard stalls
-       - Reduce computation dependency to either reduce long scoreboard stalls, or allow for more active occupancy by reducing register count if that is the limitng factor
+       - Reduce computation dependency to either reduce long scoreboard stalls, or allow for more active occupancy by reducing register count if that is the limiting factor.
      - I believe what the ILP=4 kernel is doing is the first, but not using more warps, but rather using latency hiding at the instruction level. In hindsight, I suppose the name makes sense where schedulers can hide latency by switching to different warps, but ILP allows for latency hiding at the thread/instruction level.
     
      - The reason why the two statistics I chose stood out to me and why I think their a positive is the following
@@ -755,7 +755,7 @@ Needed information to calculate:
 
 After looking into it, there are many other ways to be bottlenecked as well! This is great because it allows us to diagnose our kernel at a much deeper level before we even write the kernel. 
 
-I wrote the time to write this all out is because I think it might actually be a very, very helpful way to know what optimization technique to use for this kernel and all the kernels beyond. I believe this might be the case because say we're DRAM Bandwidth bound, these equations tell us what variables contribute to our kernel's bottleneck, and what potential optimization technique we can perform to allow for more throughput!
+The reason I took the time to write this all out is I think it might actually be a very, very helpful way to know what optimization technique to use for this kernel and all the kernels beyond. I believe this might be the case because say we're DRAM Bandwidth bound, these equations tell us what variables contribute to our kernel's bottleneck, and what potential optimization technique we can perform to allow for more throughput!
 
 To test this theory, lets apply the following equations to vector add where they apply!
 
@@ -917,7 +917,7 @@ This project first started as way for me to learn the memory hierarchy, how to o
 
 After learning that none of the optimization techniques I used help, this project transitioned from learning just how to code in a parallel programming manner, but rather a deep dive into why GPUs behave the way they do. Looking back, I am eternally grateful that none of the optimization techniques helped because I feel the depth of what I've learned from this project will genuinely be useful for the upcoming kernels I learn.
 
-I am also eternally grateful for this project because I feel as though I've finally found the niche I can imagine a career in. What was supposed to be a 5 page simple Github project on how vector add works, turned into what I'm now looking back at is a 40 page document. I did not mean to spend a month on this project, nor to make it 40 pages, but the genuine excitement of being able to dig deep into why something behaves the way it does made it impossible to stop. From the week long 31% L2 cache investigation to the "holy macaroni" moment I had where right before I went to bed I finally connected the dots and I just had to write something down to make sure I didn't forget, the entire process been the most fun I've had with computer science. I am excited for my next kernel, and that feeling of confusion to investigating to understanding and updating my mental model is something I am wanting to and excited to chase.
+I am also eternally grateful for this project because I feel as though I've finally found the niche I can imagine a career in. What was supposed to be a 5 page simple Github project on how vector add works, turned into what I'm now looking back at is a 40 page document. I did not mean to spend a month on this project, nor to make it 40 pages, but the genuine excitement of being able to dig deep into why something behaves the way it does made it impossible to stop. From the week long 31% L2 cache investigation to the "holy macaroni" moment I had where right before I went to bed I finally connected the dots and I just had to write something down to make sure I didn't forget, the entire process has been the most fun. I've had with computer science. I am excited for my next kernel, and that feeling of confusion to investigating to understanding and updating my mental model is something I am wanting to and excited to chase.
 
 While I'm sure this document could have been polished towards something more concrete like an official report where only the right answers are displayed, I feel it's important to demonstrate that not all theories are correct, and its the thought process involved, experimentation and updating of the mental model that matters the most. I feel this especially true as a beginner where often our mental models lack, and it's perfectly okay to be wrong, and it should be encouraged. To any fellow beginners, or future beginners, I hope this document provides both insight into how CUDA works, and the comfort of knowing its okay to be wrong!
 
