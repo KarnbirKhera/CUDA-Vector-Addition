@@ -201,6 +201,8 @@ The in-efficiency lies where the DRAM's single row buffer does not allow the ful
 - SM Two: Writes to L2 cache with a single value, targeted at memory sector B in the DRAM
 - SM One: Writes to L2 cache with a single value, targeted at memory sector A in the DRAM
 - SM Two: Writes to L2 cache with a single value, targeted at memory sector B in the DRAM
+  
+<br><br>
 
 - The L2 cache: Opens a cache line to memory sector A (50 nanoseconds) and batch writes two 16 byte values (~20 nanoseconds)
 - The L2 cache: Opens a cache line to memory sector B (50 nanoseconds) and batch writes two 16 byte values (~20 nanoseconds)
