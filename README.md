@@ -123,9 +123,11 @@ The result after plugging in the values results is $$0.08 \text{ } \frac{\text{F
 While CUDA timing shows us the runtime of each kernel, Nsight Compute allows us to dig deeper into the more interesting and fundamental parts of our kernel. Getting to explore the roofline model, memory charts, occupancy, warp stall reasons (which has been very helpful) and cache acitivty has been incredbily helpful for understanding how the GPU responds to each of the optimization techniques. These insights helped me connect the benchmark results to the underlying hardware behavior which I will break down in this section for each optimization in the 200M element trials as it had the lowest standard deviation.
 <br><br>
 
-<h2>Naive</h2>
+<h2>Naive NSight Analysis</h2>
 <h3>Memory Throughput</h3>
 <img width="876" height="178" alt="image" src="https://github.com/user-attachments/assets/4e3e5646-8ae2-41a0-8c1b-af8822f83e96" />
+<br><br>
+
 
 The naive kernel achieves 93.93% DRAM throughput, showing that the naive kernel effectively saturates the DRAM bandwidth without any optimization techniques.
 <h3>Roofline Placement</h3>
@@ -133,15 +135,22 @@ The naive kernel achieves 93.93% DRAM throughput, showing that the naive kernel 
 
 The naive kernel has an arithmetic intensity of 0.08 FLOPs/byte according to the roofline model, and sits on the memory roof to the left of the double precision ridge point, which confirms the kernel is memory bound. This matches our early calculation of 12 bytes moved per one floating point operation resulting in 0.08 FLOPs/byte.
 
+
+<br><br>
+
 <h3>Warp Stall Reasons</h3>
 <img width="1714" height="83" alt="image" src="https://github.com/user-attachments/assets/de7453c1-625d-402f-8211-7a49978b1d23" />
 
 Long Scoreboard Stalls represent 96% of the total 179.5 cycles being stalled in this kernel. Long Scoreboard Stalls tell us there is a memory dependency chain which requires the kernel to repeatedly wait for the memory to arrive before it can continue. Upon looking into the Source tab of Nsight compute, the line C[i] = A[i] + B[i] has a memory dependency where we must wait for values A[i] and B[i] to arrive before we can calculate C[i] resulting in our Long Scoreboard Stall. While I am still learning to read SASS, it was interesting to actually seeing the FADD (FP32 add) instruction was depending on the load instructions before it of A[i] and B[i] before calculating.
 
+<br><br>
+
 <h3>Achieved Occupancy</h3>
 The naive kernel has an Achieved Occupancy of 84.00%, with an Achieved Active Warps per SM of 40.32, where in comparison 48 active warps per SM would result in 100% achieved occupancy. This high occupancy percentage is due to the fact the naive kernel only requires 16 registers, meaning we will hit the 1,536 max threads per SM before we hit the 65,536 max registers per SM count. Assuming an Achieved Active Warps per SM of 40.32, this means per SM we use a total of ~1,290 threads out of the maximum 1,536 threads. This makes sense because if we were to add another block of 256 threads (determined at kernel launch), we would exceed the maxmimum thread limit count per SM hence the kernel only uses 5 blocks (84% of occupancy) vs 6 blocks (100% of occupancy).
 <br><br>
 This points out a great distinction between theoretical occupancy and the actual achieved occupancy. Theoretical occupancy assumes with a block size of 256 threads, each SM can actively operate with 6 blocks each, reaching the 1,536 maximum threads per SM limit (100% occupancy), in reality, each SM handled 5 blocks or 1,280 threads. This is likely because of some small implicit overhead such as from launching the blocks themselves, or switching between blocks, that prevents the last jump from 5 blocks (1,280 threads) to 6 blocks (1,536 threads) per SM. If I were to assume, a smaller thread per block size would result in higher occupancy, but doubling the amount of blocks required would likely increase the block lanuch overhead resulting in either little to no gain.
+
+<br><br>
 
 <h3>Cache Behavior</h3>
 <img width="407" height="598" alt="image" src="https://github.com/user-attachments/assets/a1fe5f9b-8f91-42e5-8cee-7a5720233b57" /><br>
@@ -153,14 +162,14 @@ After looking into why this might be the case, the following provides some insig
 <img width="463" height="495" alt="image" src="https://github.com/user-attachments/assets/33f3b2d1-8977-4b21-b5eb-369e0e3febc1" />
 <img width="1239" height="444" alt="image" src="https://github.com/user-attachments/assets/6b4278a0-255c-47f7-ae0d-2574383160c1" />
 <br>
-We can see from the Nsight compute, the L2 cache hit rate is ~31%, which is supported by the detailed L2 report. This percentage is made up of of 54186884 reads (A[i] and B[i]) and 25001191 writes (C[i]).
+We can see from the Nsight compute, the L2 cache hit rate is ~31%, which is supported by the detailed L2 report. This percentage is made up of of 54186884 reads (A[i] and B[i]) and 25001191 writes (C[i]).<br>
 
 
 <h4>The Read-only Naive</h4>
 <img width="455" height="508" alt="image" src="https://github.com/user-attachments/assets/1c569573-727e-4e51-bea2-29f6adba7ab4" />
 <img width="1355" height="451" alt="image" src="https://github.com/user-attachments/assets/8f518125-1821-40bc-bf02-2917b3484e1a" />
 <br>
-We can see from the Nsight compute, the L2 cache hit rate is ~0.07%, which is supported by the detailed L2 report.  This percentage is made up of 52477053 reads (A[i] and B[i]) and the 601 writes can be assumed to be some type of write overhead.
+We can see from the Nsight compute, the L2 cache hit rate is ~0.07%, which is supported by the detailed L2 report.  This percentage is made up of 52477053 reads (A[i] and B[i]) and the 601 writes can be assumed to be some type of write overhead.<br>
 
 <h4>The Write-only Naive</h4>
 <img width="451" height="515" alt="image" src="https://github.com/user-attachments/assets/564b7637-e51f-4ec8-841c-703378b9e2ba" />
