@@ -652,7 +652,7 @@ To test this theory, lets apply the following equations to vector add where they
 
 #### DRAM Bandwidth Bound
 
-<img width="2083" height="501" alt="image" src="https://github.com/user-attachments/assets/07362b37-4a8b-4e01-af16-7f5e696d4915" />
+<img width="2160" height="596" alt="IMG_0257" src="https://github.com/user-attachments/assets/bc5a130b-6798-4701-88b3-e0a31515ca3b" />
 
 #### Compute Bound
 
@@ -779,11 +779,17 @@ With this dissected view of our bottleneck, we can actually infer what we can do
 On my current RTX 4060 (Ada Lovelace), FP32, FP16/BF16 and FP8 are supported. To test whether changing our element size from 32 bits to 8 bits increasing the DRAM Memory throughput, we can compare FP32 vs FP8 for vector add. After comparing the FP32 and FP8 versions, the FP8 consistently outperforms the FP32!
 
 - The FP8:
+  - Decrease in duration by ~30%
+    - Naive: 10.37 ms
+    - FP8: 7.50 ms
   - Increases memory throughput by ~2%
   - Increases compute throughput by ~30%
-  - Decreases duration by 30%
+
 
 This is very interesting, because the idea of reducing the byte size was not from profiling the kernel, but rather first calculating the theoretical bottleneck from our equations, and then specifically targeting what can be done to reduce the bottleneck! The reason that the equations derived are so exciting is because its a framework that can be applied to any future kernel!
+
+
+<img width="2080" height="1164" alt="IMG_0253" src="https://github.com/user-attachments/assets/47be0ca7-01c6-4fff-944b-1299f9cf5454" />
 
 ## Conclusion
 
