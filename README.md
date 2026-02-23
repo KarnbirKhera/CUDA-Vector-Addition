@@ -264,7 +264,7 @@ Now our second source "Exploring Modern GPU Memory System Design Challenges thro
 
 - This brings up the question that upon receiving a write request, does the L2 cache immediately read the DRAM, or does it wait until after the cache line is modified and evicted? The researchers used the following experiment to answer this question. They first modified a few bytes in a sector, and then immediately afterwards, read the same sector which resulted in a miss in the L2 cache. This experiment proves that the L2 cache does not commit a read to the DRAM upon receiving a write, because if it had, the L2 sector would have resulted in a hit by the researchers.
 
-To confirm this theory using my own data, I did the following experiment with two write only kernels.
+To support this theory using my own data, I did the following experiment with two write only kernels.
 
 - Coalesced Write Only: A naive write only kernel where we are not reading any values just writing the value 1.0f with perfect coalescing.
 - Uncoalesced Write Only: Similar to the coalesced kernel, but the thread index was multiplied by 8 to make sure for every sector, we only write 4 bytes out of the given 32 byte sector for uncoalesced access.
